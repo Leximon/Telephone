@@ -11,10 +11,15 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven("https://jitpack.io/")
+    maven("https://repo.tts-craft.de/releases")
 }
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation(kotlin("stdlib-jdk8"))
+
+    implementation("ch.qos.logback:logback-classic:1.4.5")
     implementation("net.dv8tion:JDA:5.0.0-beta.1")
     implementation("com.github.minndevelopment:jda-ktx:17eb77a138ba356a3b0439afeddf77d4520c7c60")
 }

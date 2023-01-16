@@ -1,0 +1,52 @@
+package de.leximon.telephone.util
+
+import de.leximon.telephone.DEV
+import dev.minn.jda.ktx.events.listener
+import net.dv8tion.jda.api.events.guild.GenericGuildEvent
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent
+import net.dv8tion.jda.api.events.guild.GuildReadyEvent
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.interactions.commands.build.Commands
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
+import net.dv8tion.jda.api.sharding.ShardManager
+
+private val commandHandlers = mutableMapOf<String, (SlashCommandInteractionEvent) -> Unit>()
+
+inline fun slashCommand(
+    name: String,
+    description: String,
+    structure: SlashCommandData.() -> Unit
+): SlashCommandData = Commands.slash(name, description).apply(structure)
+
+fun listen(path: String, listener: (SlashCommandInteractionEvent) -> Unit) {
+    commandHandlers[path] = listener
+}
+
+
+fun ShardManager.initCommands(vararg commands: SlashCommandData) {
+    initCommandListener()
+
+    // register commands on guilds if dev mode is enabled
+    if (DEV) {
+        listener<GenericGuildEvent> { event ->
+            if (event !is GuildReadyEvent && event !is GuildJoinEvent)
+                return@listener
+            val guild = event.guild
+            guild.updateCommands()
+                .addCommands(*commands)
+                .queue()
+        }
+        return
+    }
+
+    // register commands globally
+    for (jda in shards)
+        jda.updateCommands()
+            .addCommands(*commands)
+            .queue()
+}
+
+private fun ShardManager.initCommandListener() = listener<SlashCommandInteractionEvent> { e ->
+    val handler = commandHandlers[e.fullCommandName] ?: return@listener
+    handler(e)
+}
