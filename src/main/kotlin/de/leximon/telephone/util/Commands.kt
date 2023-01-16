@@ -10,19 +10,27 @@ import net.dv8tion.jda.api.interactions.commands.build.Commands
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
 import net.dv8tion.jda.api.sharding.ShardManager
 
-private val commandHandlers = mutableMapOf<String, (SlashCommandInteractionEvent) -> Unit>()
+private val commandHandlers = mutableMapOf<String, suspend (SlashCommandInteractionEvent) -> Unit>()
 
+// util
 inline fun slashCommand(
     name: String,
     description: String,
     structure: SlashCommandData.() -> Unit
-): SlashCommandData = Commands.slash(name, description).apply(structure)
+) = Commands.slash(name, description).apply(structure)
 
-fun listen(path: String, listener: (SlashCommandInteractionEvent) -> Unit) {
+fun execute(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
     commandHandlers[path] = listener
 }
 
+class CommandException(message: String) : RuntimeException(message)
 
+fun SlashCommandInteractionEvent.error(key: String, vararg args: Any) = CommandException(tl(key, *args))
+
+fun SlashCommandInteractionEvent.success(key: String, vararg args: Any) = reply(tl(key, *args))
+
+
+// registration
 fun ShardManager.initCommands(vararg commands: SlashCommandData) {
     initCommandListener()
 
@@ -48,5 +56,11 @@ fun ShardManager.initCommands(vararg commands: SlashCommandData) {
 
 private fun ShardManager.initCommandListener() = listener<SlashCommandInteractionEvent> { e ->
     val handler = commandHandlers[e.fullCommandName] ?: return@listener
-    handler(e)
+    try {
+        handler(e)
+    } catch (ex: CommandException) {
+        e.reply(ex.message ?: "An error occurred")
+            .setEphemeral(true)
+            .queue()
+    }
 }
