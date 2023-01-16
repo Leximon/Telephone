@@ -1,8 +1,7 @@
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.util.asPhoneNumber
-import de.leximon.telephone.util.listen
-import de.leximon.telephone.util.slashCommand
+import de.leximon.telephone.util.*
+import dev.minn.jda.ktx.messages.EmbedBuilder
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 
@@ -14,5 +13,12 @@ fun phoneNumberCommand() = slashCommand("phone-number", "Shows the phone number 
 }
 
 private fun phoneNumber(e: SlashCommandInteractionEvent) {
-    e.reply("The phone number of this server is: ${e.guild?.id?.asPhoneNumber()}").queue()
+    e.replyEmbeds(EmbedBuilder {
+        title = e.tl("embed.phone_number", user = true)
+        color = EMBED_COLOR_NONE
+        description = e.guild?.id?.asPhoneNumber()
+        e.guild?.let {
+            footer(it.name, it.iconUrl)
+        }
+    }.build()).setEphemeral(true).queue()
 }
