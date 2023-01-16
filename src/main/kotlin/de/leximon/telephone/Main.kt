@@ -47,7 +47,8 @@ fun main(args: Array<String>) {
 
     shardManager.initCommands(
         helpCommand(),
-        phoneNumberCommand()
+        phoneNumberCommand(),
+        callCommand()
     )
 }
 

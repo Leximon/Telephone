@@ -5,12 +5,16 @@ import dev.minn.jda.ktx.events.listener
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.interactions.commands.Command.Choice
 import net.dv8tion.jda.api.interactions.commands.build.Commands
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
 import net.dv8tion.jda.api.sharding.ShardManager
+import java.util.Objects
 
 private val commandHandlers = mutableMapOf<String, suspend (SlashCommandInteractionEvent) -> Unit>()
+private val autoCompleteHandlers = mutableMapOf<Int, suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>>()
 
 // util
 inline fun slashCommand(
@@ -21,6 +25,10 @@ inline fun slashCommand(
 
 fun execute(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
     commandHandlers[path] = listener
+}
+
+fun SlashCommandData.autoComplete(optionName: String, listener: suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>) {
+    autoCompleteHandlers[Objects.hash(name, optionName)] = listener
 }
 
 class CommandException(message: String) : RuntimeException(message)
@@ -54,13 +62,24 @@ fun ShardManager.initCommands(vararg commands: SlashCommandData) {
             .queue()
 }
 
-private fun ShardManager.initCommandListener() = listener<SlashCommandInteractionEvent> { e ->
-    val handler = commandHandlers[e.fullCommandName] ?: return@listener
-    try {
-        handler(e)
-    } catch (ex: CommandException) {
-        e.reply(ex.message ?: "An error occurred")
-            .setEphemeral(true)
-            .queue()
+private fun ShardManager.initCommandListener() {
+    listener<SlashCommandInteractionEvent> { e ->
+        try {
+            commandHandlers[e.fullCommandName]?.invoke(e)
+        } catch (ex: CommandException) {
+            e.reply(ex.message ?: "An error occurred")
+                .setEphemeral(true)
+                .queue()
+        }
+    }
+    listener<CommandAutoCompleteInteractionEvent> { e ->
+        val hash = Objects.hash(e.name, e.focusedOption.name);
+        autoCompleteHandlers[hash]?.invoke(e)?.let { choices ->
+            val value = e.focusedOption.value
+            e.replyChoices(
+                choices.filter { it.name.startsWith(value, ignoreCase = true) }
+                    .sortedBy { it.name }
+            ).queue()
+        }
     }
 }
