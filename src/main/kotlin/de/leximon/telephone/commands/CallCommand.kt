@@ -3,9 +3,8 @@ package de.leximon.telephone.commands
 import de.leximon.telephone.core.Contact
 import de.leximon.telephone.core.retrieveContactList
 import de.leximon.telephone.core.retrieveSettings
-import de.leximon.telephone.util.Localization
-import de.leximon.telephone.util.autoComplete
-import de.leximon.telephone.util.execute
+import de.leximon.telephone.util.onAutoComplete
+import de.leximon.telephone.util.onInteract
 import de.leximon.telephone.util.slashCommand
 import dev.minn.jda.ktx.interactions.commands.option
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
@@ -18,8 +17,8 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
     isGuildOnly = true
     option<String>("number", "The phone number of the discord server (Discord Server ID)", required = true, autocomplete = true)
 
-    execute("call", ::call)
-    autoComplete("number", ::contactList)
+    onInteract("call", ::call)
+    onAutoComplete("number", ::contactList)
 }
 
 private fun call(e: SlashCommandInteractionEvent) {

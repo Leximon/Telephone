@@ -28,11 +28,11 @@ inline fun slashCommand(
     it.setLocalizationFunction(Localization)
 }
 
-fun execute(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
+fun onInteract(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
     commandHandlers[path] = listener
 }
 
-fun SlashCommandData.autoComplete(optionName: String, listener: suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>) {
+fun SlashCommandData.onAutoComplete(optionName: String, listener: suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>) {
     autoCompleteHandlers[Objects.hash(name, optionName)] = listener
 }
 
