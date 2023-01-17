@@ -1,9 +1,6 @@
 package de.leximon.telephone
 
-import de.leximon.telephone.commands.CALL_COMMAND_NAME
-import de.leximon.telephone.commands.callCommand
-import de.leximon.telephone.commands.helpCommand
-import de.leximon.telephone.commands.phoneNumberCommand
+import de.leximon.telephone.commands.*
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.CoroutineEventManager
@@ -49,7 +46,8 @@ fun main(args: Array<String>) {
     shardManager.initCommands(
         helpCommand(),
         phoneNumberCommand(),
-        callCommand()
+        callCommand(),
+        settingsCommand()
     )
 }
 
@@ -67,7 +65,7 @@ suspend fun createSummaryEmbed(locale: DiscordLocale, jda: JDA, byCommand: Boole
     )
     val desc = "$summary\n\n" +
             "[${tl(locale, "summary.privacy")}]($PRIVACY_URL) | " +
-            "[${tl(locale, "summary.terms_of_service")}]($TERMS_URL)"
+            "[${tl(locale, "summary.terms-of-service")}]($TERMS_URL)"
 
     // build the embed message
     return EmbedBuilder {

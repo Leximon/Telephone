@@ -2,6 +2,8 @@
 
 package de.leximon.telephone.core
 
+import com.mongodb.client.MongoCollection
+import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.util.database
 import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
@@ -16,17 +18,17 @@ data class GuildSettings(
      */
     val callTextChannel: String? = null,
     /**
-     * The voice channel where the bot joins when a call is incoming, null if the bot should join voice channel with the most users in it
+     * The voice channel where the bot joins when a call is incoming
      */
     val callVoiceChannel: String? = null,
     /**
      * Whether the bot should automatically join the voice channel when a call is incoming
      */
-    val joinVoiceChannel: Boolean = true,
+    val voiceChannelJoinRule: VoiceChannelJoinRule = VoiceChannelJoinRule.MOST_USERS,
     /**
      * True if the bot should not transmit audio from other bots
      */
-    val muteBots: Boolean = true
+    val muteBots: Boolean = false
 )
 
 @Serializable
@@ -50,22 +52,34 @@ data class Contact(
 }
 
 /**
- * Retrieves the guild data from the database or creates a new one if it doesn't exist
+ * Retrieves the guild settings from the database or creates a new one if it doesn't exist
  */
 fun Guild.retrieveSettings(): GuildSettings {
     val collection = database.getCollection<GuildSettings>("guilds")
     return collection.findOne(GuildSettings::_id eq id)
-        ?: GuildSettings(id).also { collection.insertOne(it) }
+        ?: GuildSettings(id)
 }
 
+/**
+ * Retrieves the guild contact list from the database or creates a new one if it doesn't exist
+ */
 fun Guild.retrieveContactList(): GuildContactList {
     val collection = database.getCollection<GuildContactList>("guildContactLists")
     return collection.findOne(GuildContactList::_id eq id)
-        ?: GuildContactList(id).also { collection.insertOne(it) }
+        ?: GuildContactList(id)
 }
 
+/**
+ * Retrieves the guild block list from the database or creates a new one if it doesn't exist
+ */
 fun Guild.retrieveBlockList(): GuildBlockList {
     val collection = database.getCollection<GuildBlockList>("guildBlockLists")
     return collection.findOne(GuildBlockList::_id eq id)
-        ?: GuildBlockList(id).also { collection.insertOne(it) }
+        ?: GuildBlockList(id)
+}
+
+
+fun Guild.updateGuildSettings(vararg updates: SetTo<*>) {
+    val collection = database.getCollection<GuildSettings>("guilds")
+    collection.updateOne(GuildSettings::_id eq id, *updates, updateOptions = UpdateOptions().upsert(true))
 }

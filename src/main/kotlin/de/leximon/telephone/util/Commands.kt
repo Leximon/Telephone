@@ -4,43 +4,90 @@ import com.mongodb.MongoException
 import de.leximon.telephone.DEV
 import de.leximon.telephone.LOGGER
 import dev.minn.jda.ktx.events.listener
+import dev.minn.jda.ktx.interactions.commands.Option
 import dev.minn.jda.ktx.messages.EmbedBuilder
+import net.dv8tion.jda.api.entities.*
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.interactions.InteractionHook
 import net.dv8tion.jda.api.interactions.commands.Command.Choice
 import net.dv8tion.jda.api.interactions.commands.build.Commands
+import net.dv8tion.jda.api.interactions.commands.build.OptionData
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 import net.dv8tion.jda.api.sharding.ShardManager
 import java.util.Objects
 
 private val commandHandlers = mutableMapOf<String, suspend (SlashCommandInteractionEvent) -> Unit>()
 private val autoCompleteHandlers = mutableMapOf<Int, suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>>()
 
-// util
+// general utils
 inline fun slashCommand(
     name: String,
     description: String,
     structure: SlashCommandData.() -> Unit
-) = Commands.slash(name, description).apply(structure).also {
-    it.setLocalizationFunction(Localization)
+) = Commands.slash(name, description).apply(structure).apply {
+    setLocalizationFunction(Localization)
 }
 
-fun onInteract(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
-    commandHandlers[path] = listener
+/**
+ * Adds a slash command interaction handler to given command path.
+ */
+fun SlashCommandData.onInteract(
+    path: String = "",
+    listener: suspend (SlashCommandInteractionEvent) -> Unit
+) {
+    commandHandlers["$name $path"] = listener
 }
 
-fun SlashCommandData.onAutoComplete(optionName: String, listener: suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>) {
+/**
+ * Adds a slash command autocomplete handler to given option name.
+ */
+fun SlashCommandData.onAutoComplete(
+    optionName: String,
+    listener: suspend (CommandAutoCompleteInteractionEvent) -> List<Choice>
+) {
     autoCompleteHandlers[Objects.hash(name, optionName)] = listener
 }
 
 class CommandException(message: String) : RuntimeException(message)
 
-fun SlashCommandInteractionEvent.error(key: String, vararg args: Any) = CommandException(tl(key, *args))
+fun SlashCommandInteractionEvent.error(
+    key: String, vararg args: Any, emoji: UnicodeEmoji? = UnicodeEmoji.ERROR
+) = CommandException((emoji?.forPrefix() ?: "") + tl(key, *args))
+fun SlashCommandInteractionEvent.success(
+    key: String, vararg args: Any, emoji: UnicodeEmoji? = null
+) = reply((emoji?.forPrefix() ?: "") + tl(key, *args))
+fun InteractionHook.error(
+    guild: Guild, key: String, vararg args: Any, emoji: UnicodeEmoji? = UnicodeEmoji.ERROR
+) = editOriginal((emoji?.forPrefix() ?: "") + guild.tl(key, *args))
+fun InteractionHook.success(
+    guild: Guild, key: String, vararg args: Any, emoji: UnicodeEmoji? = null
+) = editOriginal((emoji?.forPrefix() ?: "") + guild.tl(key, *args))
 
-fun SlashCommandInteractionEvent.success(key: String, vararg args: Any) = reply(tl(key, *args))
+// enum option
+inline fun <reified E: Enum<E>> SubcommandData.enumOption(
+    name: String, description: String,
+    required: Boolean = false, autocomplete: Boolean = false,
+    builder: OptionData.() -> Unit = {}
+) = addOptions(Option<Int>(name, description, required, autocomplete, builder).also { opt ->
+    opt.addChoices(E::class.java.enumConstants.map {
+        Choice(it.toString(), it.ordinal.toLong())
+    })
+})
+
+
+/**
+ * Returns the value of the option or null if it is not present.
+ */
+inline fun <reified E: Enum<E>> SlashCommandInteractionEvent.getEnumOption(name: String): E? {
+    val value = getOption(name)?.asLong?.toInt()
+        ?: return null
+    return E::class.java.enumConstants[value]
+}
 
 
 // registration

@@ -15,7 +15,9 @@ object Localization : LocalizationFunction {
 
     fun init(commandBundle: String, generalBundle: String, vararg locales: DiscordLocale) {
         fallbackLocale = locales.first()
-        commandBundles = locales.map { it to ResourceBundle.getBundle(commandBundle, Locale.forLanguageTag(it.locale)) }
+        commandBundles = locales
+            .filter { it != fallbackLocale }
+            .map { it to ResourceBundle.getBundle(commandBundle, Locale.forLanguageTag(it.locale)) }
         generalBundles = locales.associateWith { ResourceBundle.getBundle(generalBundle, Locale.forLanguageTag(it.locale)) }
     }
 

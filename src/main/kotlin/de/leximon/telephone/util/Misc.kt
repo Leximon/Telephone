@@ -11,6 +11,8 @@ fun String.asPhoneNumber(): String {
     return builder.toString()
 }
 
+fun Boolean.tlKey() = if (this) "on" else "off"
+
 fun getEnv(key: String): String {
     val value = System.getenv(key)
     if (value == null || value.isBlank())
