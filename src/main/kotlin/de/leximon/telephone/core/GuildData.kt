@@ -54,32 +54,21 @@ data class Contact(
 /**
  * Retrieves the guild settings from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveSettings(): GuildSettings {
-    val collection = database.getCollection<GuildSettings>("guilds")
-    return collection.findOne(GuildSettings::_id eq id)
-        ?: GuildSettings(id)
-}
+fun Guild.retrieveSettings() = database.getCollection<GuildSettings>("guilds")
+        .findOne(GuildSettings::_id eq id) ?: GuildSettings(id)
 
 /**
  * Retrieves the guild contact list from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveContactList(): GuildContactList {
-    val collection = database.getCollection<GuildContactList>("guildContactLists")
-    return collection.findOne(GuildContactList::_id eq id)
-        ?: GuildContactList(id)
-}
+fun Guild.retrieveContactList() = database.getCollection<GuildContactList>("guildContactLists")
+        .findOne(GuildContactList::_id eq id) ?: GuildContactList(id)
 
 /**
  * Retrieves the guild block list from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveBlockList(): GuildBlockList {
-    val collection = database.getCollection<GuildBlockList>("guildBlockLists")
-    return collection.findOne(GuildBlockList::_id eq id)
-        ?: GuildBlockList(id)
-}
+fun Guild.retrieveBlockList() = database.getCollection<GuildBlockList>("guildBlockLists")
+        .findOne(GuildBlockList::_id eq id) ?: GuildBlockList(id)
 
 
-fun Guild.updateGuildSettings(vararg updates: SetTo<*>) {
-    val collection = database.getCollection<GuildSettings>("guilds")
-    collection.updateOne(GuildSettings::_id eq id, *updates, updateOptions = UpdateOptions().upsert(true))
-}
+fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
+    .updateOne(GuildSettings::_id eq id, *updates, updateOptions = UpdateOptions().upsert(true))
