@@ -2,7 +2,6 @@
 
 package de.leximon.telephone.core
 
-import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.util.database
 import kotlinx.serialization.Serializable
