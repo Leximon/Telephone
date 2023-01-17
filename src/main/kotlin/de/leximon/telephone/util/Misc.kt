@@ -10,3 +10,10 @@ fun String.asPhoneNumber(): String {
     builder.insert(0, "+")
     return builder.toString()
 }
+
+fun getEnv(key: String): String {
+    val value = System.getenv(key)
+    if (value == null || value.isBlank())
+        throw IllegalStateException("Environment variable $key cannot be blank")
+    return value
+}

@@ -4,9 +4,7 @@ import de.leximon.telephone.commands.CALL_COMMAND_NAME
 import de.leximon.telephone.commands.callCommand
 import de.leximon.telephone.commands.helpCommand
 import de.leximon.telephone.commands.phoneNumberCommand
-import de.leximon.telephone.util.Localization
-import de.leximon.telephone.util.initCommands
-import de.leximon.telephone.util.tl
+import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.CoroutineEventManager
 import dev.minn.jda.ktx.messages.EmbedBuilder
@@ -26,17 +24,20 @@ var DEV = false
 
 fun main(args: Array<String>) {
     LOGGER.info("Starting Telephone...")
-    DEV = args.size >= 2 && args[1] == "dev"
+    DEV = args.isNotEmpty() && args[0] == "dev"
     if (DEV)
         LOGGER.info("Running in DEV mode!")
+    val token = getEnv("TOKEN");
+    val databaseConnectionString = getEnv("DB_CONNECTION_STRING")
 
+    initDatabase(databaseConnectionString)
     Localization.init(
         "commands", "general",
         DiscordLocale.ENGLISH_US, // default locale
         DiscordLocale.GERMAN,
         DiscordLocale.FRENCH
     )
-    val shardManager = DefaultShardManagerBuilder.createLight(args[0])
+    val shardManager = DefaultShardManagerBuilder.createLight(token)
         .setEventManagerProvider {
             CoroutineEventManager(timeout = 1.minutes)
         }

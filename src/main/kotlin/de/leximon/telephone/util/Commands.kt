@@ -1,7 +1,10 @@
 package de.leximon.telephone.util
 
+import com.mongodb.MongoException
 import de.leximon.telephone.DEV
+import de.leximon.telephone.LOGGER
 import dev.minn.jda.ktx.events.listener
+import dev.minn.jda.ktx.messages.EmbedBuilder
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
@@ -70,6 +73,15 @@ private fun ShardManager.initCommandListener() {
             e.reply(ex.message ?: "An error occurred")
                 .setEphemeral(true)
                 .queue()
+        } catch (ex: MongoException) {
+            val msg = "An error occurred while interacting with the database!"
+
+            e.replyEmbeds(EmbedBuilder {
+                title = "Database Error"
+                description = "An error occurred while interacting with the database.\nPlease try again later."
+                color = 0xFF0000
+            }.build()).setEphemeral(true).queue()
+            LOGGER.error(msg, ex)
         }
     }
     listener<CommandAutoCompleteInteractionEvent> { e ->
