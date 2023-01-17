@@ -21,8 +21,11 @@ object Localization : LocalizationFunction {
 
     override fun apply(localizationKey: String): MutableMap<DiscordLocale, String> {
         val map = mutableMapOf<DiscordLocale, String>()
-        for ((locale, bundle) in commandBundles)
-            map[locale] = bundle.getString(localizationKey)
+        for ((locale, bundle) in commandBundles) {
+            try {
+                map[locale] = bundle.getString(localizationKey)
+            } catch (ignore: MissingResourceException) { }
+        }
         return map
     }
 

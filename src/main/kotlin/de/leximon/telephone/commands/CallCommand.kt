@@ -1,6 +1,9 @@
 package de.leximon.telephone.commands
 
+import de.leximon.telephone.core.Contact
+import de.leximon.telephone.core.retrieveContactList
 import de.leximon.telephone.core.retrieveSettings
+import de.leximon.telephone.util.Localization
 import de.leximon.telephone.util.autoComplete
 import de.leximon.telephone.util.execute
 import de.leximon.telephone.util.slashCommand
@@ -21,8 +24,10 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
 
 private fun call(e: SlashCommandInteractionEvent) {
     println(e.guild!!.retrieveSettings())
+    println(e.guild!!.retrieveContactList())
 }
 
 private fun contactList(e: CommandAutoCompleteInteractionEvent): List<Choice> {
-    return emptyList()
+    val contactList = e.guild!!.retrieveContactList().contacts
+    return contactList.map(Contact::asChoice)
 }

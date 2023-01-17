@@ -24,7 +24,9 @@ inline fun slashCommand(
     name: String,
     description: String,
     structure: SlashCommandData.() -> Unit
-) = Commands.slash(name, description).apply(structure)
+) = Commands.slash(name, description).apply(structure).also {
+    it.setLocalizationFunction(Localization)
+}
 
 fun execute(path: String, listener: suspend (SlashCommandInteractionEvent) -> Unit) {
     commandHandlers[path] = listener
