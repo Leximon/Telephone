@@ -13,6 +13,13 @@ fun String.asPhoneNumber(): String {
 
 fun Boolean.tlKey() = if (this) "on" else "off"
 
+/**
+ * Prefixes the string with the unicode emoji
+ */
+fun String.withEmoji(emoji: UnicodeEmoji): String {
+    return emoji.forPrefix() + this
+}
+
 fun getEnv(key: String): String {
     val value = System.getenv(key)
     if (value == null || value.isBlank())

@@ -2,6 +2,7 @@
 
 package de.leximon.telephone.core
 
+import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.util.database
 import kotlinx.serialization.Serializable
@@ -54,20 +55,22 @@ data class Contact(
  * Retrieves the guild settings from the database or creates a new one if it doesn't exist
  */
 fun Guild.retrieveSettings() = database.getCollection<GuildSettings>("guilds")
-        .findOne(GuildSettings::_id eq id) ?: GuildSettings(id)
+        .findOneById(id) ?: GuildSettings(id)
 
 /**
  * Retrieves the guild contact list from the database or creates a new one if it doesn't exist
  */
 fun Guild.retrieveContactList() = database.getCollection<GuildContactList>("guildContactLists")
-        .findOne(GuildContactList::_id eq id) ?: GuildContactList(id)
+        .findOneById(id) ?: GuildContactList(id)
 
 /**
  * Retrieves the guild block list from the database or creates a new one if it doesn't exist
  */
 fun Guild.retrieveBlockList() = database.getCollection<GuildBlockList>("guildBlockLists")
-        .findOne(GuildBlockList::_id eq id) ?: GuildBlockList(id)
+        .findOneById(id) ?: GuildBlockList(id)
 
+fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
+    .findOneAndUpdate(GuildSettings::_id eq id, set(*updates), FindOneAndUpdateOptions().upsert(true)) ?: GuildSettings(id)
 
 fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
     .updateOne(GuildSettings::_id eq id, *updates, updateOptions = UpdateOptions().upsert(true))

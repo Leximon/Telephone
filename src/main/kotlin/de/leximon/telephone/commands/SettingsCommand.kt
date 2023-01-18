@@ -2,23 +2,26 @@ package de.leximon.telephone.commands
 
 import de.leximon.telephone.core.GuildSettings
 import de.leximon.telephone.core.VoiceChannelJoinRule
+import de.leximon.telephone.core.retrieveAndUpdateGuildSettings
 import de.leximon.telephone.core.updateGuildSettings
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.subcommand
-import dev.minn.jda.ktx.interactions.components.getOption
+import dev.minn.jda.ktx.interactions.components.*
+import dev.minn.jda.ktx.messages.reply_
 import net.dv8tion.jda.api.entities.channel.Channel
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
+import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 import org.litote.kmongo.setTo
+import kotlin.time.Duration.Companion.minutes
 
 fun settingsCommand() = slashCommand("settings", "Configurations for the telephone bot") {
     isGuildOnly = true
     defaultPermissions = DefaultMemberPermissions.DISABLED
-
     subcommand("incoming-call-text-channel", "Sets the text channel for incoming calls") {
         option<Channel>("channel", "The text channel for incoming calls", required = true) { channelTypes += ChannelType.TEXT }
     }
@@ -32,63 +35,120 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         option<Boolean>("enabled", "Enable or disable", required = true)
     }
 
-    onInteract("incoming-call-text-channel", ::setIncomingCallTextChannel)
-    onInteract("incoming-call-voice-channel", ::setIncomingCallVoiceChannel)
-    onInteract("voice-channel-join-rule", ::setVoiceChannelJoinRule)
-    onInteract("mute-bots", ::setBotsMuted)
-}
 
-private fun setIncomingCallTextChannel(e: SlashCommandInteractionEvent) {
-    val guild = e.guild!!
-    val channel = e.getOption<TextChannel>("channel")!!
-    e.deferReply().queue()
+    // events
+    onInteract("incoming-call-text-channel", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val channel = e.getOption<TextChannel>("channel")!!
+        if (!channel.canTalk())
+            throw e.error("response.error.no-access.text-channel", channel.asMention)
 
-    guild.updateGuildSettings(GuildSettings::callTextChannel setTo channel.id)
-    e.hook.success(
-        guild,
-        "response.command.settings.incoming-call-text-channel",
-        channel.asMention,
-        emoji = UnicodeEmoji.SETTINGS
-    ).queue()
-}
+        e.deferReply().queue()
+        guild.updateGuildSettings(GuildSettings::callTextChannel setTo channel.id)
+        e.hook.success(
+            "response.command.settings.incoming-call-text-channel", channel.asMention,
+            emoji = UnicodeEmoji.SETTINGS
+        ).queue()
+    }
 
-private fun setIncomingCallVoiceChannel(e: SlashCommandInteractionEvent) {
-    val guild = e.guild!!
-    val channel = e.getOption<VoiceChannel>("channel")!!
-    e.deferReply().queue()
+    onInteract("incoming-call-voice-channel", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val channel = e.getOption<VoiceChannel>("channel")!!
+        if (!guild.selfMember.hasAccess(channel))
+            throw e.error("response.error.no-access.voice-channel", channel.asMention)
 
-    guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo channel.id)
-    e.hook.success(
-        guild,
-        "response.command.settings.incoming-call-voice-channel",
-        channel.asMention,
-        emoji = UnicodeEmoji.SETTINGS
-    ).queue()
-}
+        e.deferReply().queue()
+        val settings = guild.retrieveAndUpdateGuildSettings(GuildSettings::callVoiceChannel setTo channel.id)
+        if (settings.voiceChannelJoinRule == VoiceChannelJoinRule.SELECTED_CHANNEL) {
+            e.hook.success(
+                "response.command.settings.incoming-call-voice-channel", channel.asMention,
+                emoji = UnicodeEmoji.SETTINGS
+            ).queue()
+            return@onInteract
+        }
 
-private fun setVoiceChannelJoinRule(e: SlashCommandInteractionEvent) {
-    val guild = e.guild!!
-    val joinRule = e.getEnumOption<VoiceChannelJoinRule>("rule")!!
-    e.deferReply().queue()
+        e.hook.successWithOptions(
+            "response.command.settings.incoming-call-voice-channel", channel.asMention,
+            emoji = UnicodeEmoji.SETTINGS
+        ) {
+            text("response.command.settings.incoming-call-voice-channel.set-join-rule")
+            components += row(
+                primary("set-join-rule-selected-channel", "Set join rule to \"Selected channel\""),
+                secondary("ignore", "Ignore")
+            )
+            awaitInteraction { interaction ->
+                if (interaction.componentId != "set-join-rule-selected-channel")
+                    return@awaitInteraction true // ignore button has been pressed
+                guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo VoiceChannelJoinRule.SELECTED_CHANNEL)
+                interaction.reply(
+                    interaction.tl("response.command.settings.voice-channel-join-rule", VoiceChannelJoinRule.SELECTED_CHANNEL.tl(guild))
+                        .withEmoji(UnicodeEmoji.SETTINGS)
+                ).queue()
+                return@awaitInteraction true
+            }
+        }
+    }
 
-    guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo joinRule)
-    e.hook.success(
-        guild,
-        "response.command.settings.voice-channel-join-rule",
-        joinRule.tl(guild),
-        emoji = UnicodeEmoji.SETTINGS
-    ).queue()
-}
+    onInteract("voice-channel-join-rule", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val joinRule = e.getEnumOption<VoiceChannelJoinRule>("rule")!!
 
-private fun setBotsMuted(e: SlashCommandInteractionEvent) {
-    val guild = e.guild!!
-    val enabled = e.getOption<Boolean>("enabled")!!
-    e.deferReply().queue()
+        e.deferReply().queue()
+        guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo joinRule)
+        if (joinRule != VoiceChannelJoinRule.SELECTED_CHANNEL) {
+            e.hook.success(
+                "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
+                emoji = UnicodeEmoji.SETTINGS
+            ).queue()
+            return@onInteract
+        }
 
-    guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
-    e.hook.success(
-        guild,
-        "response.command.settings.mute-bots.${enabled.tlKey()}",
-        emoji = UnicodeEmoji.SETTINGS
-    ).queue()
+        e.hook.successWithOptions(
+            "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
+            emoji = UnicodeEmoji.SETTINGS
+        ) {
+            text("response.command.settings.voice-channel-join-rule.set-voice-channel")
+            components += listOf(
+                row(EntitySelectMenu(
+                    "set-incoming-call-voice-channel",
+                    listOf(SelectTarget.CHANNEL),
+                    placeholder = "Set incoming call voice channel"
+                ) {
+                    setChannelTypes(ChannelType.VOICE)
+                }),
+                row(secondary("ignore", "Ignore"))
+            )
+            awaitInteraction { interaction ->
+                if (interaction !is EntitySelectInteractionEvent)
+                    return@awaitInteraction true // ignore button has been pressed
+                val selectedChannel = interaction.values.first() as VoiceChannel
+                if (!guild.selfMember.hasAccess(selectedChannel)) {
+                    interaction.reply_(
+                        interaction.tl("response.error.no-access.voice-channel", selectedChannel.asMention).withEmoji(UnicodeEmoji.ERROR),
+                        ephemeral = true
+                    ).queue()
+                    return@awaitInteraction false
+                }
+
+                guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo selectedChannel.id)
+                interaction.reply(
+                    interaction.tl("response.command.settings.incoming-call-voice-channel", selectedChannel.asMention)
+                        .withEmoji(UnicodeEmoji.SETTINGS)
+                ).queue()
+                return@awaitInteraction true
+            }
+        }
+    }
+
+    onInteract("mute-bots", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val enabled = e.getOption<Boolean>("enabled")!!
+        e.deferReply().queue()
+
+        guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
+        e.hook.success(
+            "response.command.settings.mute-bots.${enabled.tlKey()}",
+            emoji = UnicodeEmoji.SETTINGS
+        ).queue()
+    }
 }

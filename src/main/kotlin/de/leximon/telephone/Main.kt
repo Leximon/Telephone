@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.interactions.DiscordLocale
 import net.dv8tion.jda.api.requests.GatewayIntent
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder
+import net.dv8tion.jda.api.sharding.ShardManager
 import net.dv8tion.jda.api.utils.MemberCachePolicy
 import net.dv8tion.jda.api.utils.cache.CacheFlag
 import org.slf4j.Logger
@@ -18,6 +19,8 @@ import kotlin.time.Duration.Companion.minutes
 
 val LOGGER = LoggerFactory.getLogger("Telephone") as Logger
 var DEV = false
+
+lateinit var shardManager: ShardManager
 
 fun main(args: Array<String>) {
     LOGGER.info("Starting Telephone...")
@@ -34,7 +37,7 @@ fun main(args: Array<String>) {
         DiscordLocale.GERMAN,
         DiscordLocale.FRENCH
     )
-    val shardManager = DefaultShardManagerBuilder.createLight(token)
+    shardManager = DefaultShardManagerBuilder.createLight(token)
         .setEventManagerProvider {
             CoroutineEventManager(timeout = 1.minutes)
         }
