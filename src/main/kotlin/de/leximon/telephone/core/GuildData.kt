@@ -73,4 +73,4 @@ fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.ge
     .findOneAndUpdate(GuildSettings::_id eq id, set(*updates), FindOneAndUpdateOptions().upsert(true)) ?: GuildSettings(id)
 
 fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
-    .updateOne(GuildSettings::_id eq id, *updates, updateOptions = UpdateOptions().upsert(true))
+    .updateOneById(id, *updates, options = UpdateOptions().upsert(true))
