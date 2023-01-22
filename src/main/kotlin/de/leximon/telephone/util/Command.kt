@@ -12,6 +12,7 @@ import dev.minn.jda.ktx.messages.EmbedBuilder
 import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.editMessage
 import dev.minn.jda.ktx.messages.editMessage_
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
@@ -136,17 +137,15 @@ suspend fun InteractionHook.successWithOptions(
             val event = jda.await<GenericComponentInteractionCreateEvent> { e ->
                 // only consume the event if the component id is correct, and it's performed by the same user
                 // if someone else clicks any component, respond with an error message
-                options.components.forEach { l ->
-                    l.components.forEach {
-                        if (it is ActionComponent && it.id == e.componentId) {
-                            if (interaction.user.idLong == e.user.idLong)
-                                return@await true
+                options.components.flatten().forEach {
+                    if (it is ActionComponent && it.id == e.componentId) {
+                        if (interaction.user.idLong == e.user.idLong)
+                            return@await true
 
-                            e.reply(
-                                e.tl("response.error.not-allowed-to-interact").withEmoji(UnicodeEmoji.NOT_PERMITTED)
-                            ).setEphemeral(true).queue()
-                            return@await false
-                        }
+                        e.reply(
+                            e.tl("response.error.not-allowed-to-interact").withEmoji(UnicodeEmoji.NOT_PERMITTED)
+                        ).setEphemeral(true).queue()
+                        return@await false
                     }
                 }
                 return@await false

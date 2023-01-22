@@ -4,6 +4,7 @@ package de.leximon.telephone.core
 
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.UpdateOptions
+import de.leximon.telephone.util.asPhoneNumber
 import de.leximon.telephone.util.database
 import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
@@ -28,7 +29,11 @@ data class GuildSettings(
     /**
      * True if the bot should not transmit audio from other bots
      */
-    val muteBots: Boolean = false
+    val muteBots: Boolean = false,
+    /**
+     * The sounds used for calls
+     */
+    val soundPack: SoundPack = SoundPack.CLASSIC
 )
 
 @Serializable
@@ -40,15 +45,15 @@ data class GuildContactList(
 @Serializable
 data class GuildBlockList(
     val _id: String,
-    val blocked: List<String> = emptyList()
+    val blocked: List<Long> = emptyList()
 )
 
 @Serializable
 data class Contact(
     val name: String,
-    val number: String
+    val number: Long
 ) {
-    fun asChoice() = Choice(name, number)
+    fun asChoice() = Choice(name, number.asPhoneNumber())
 }
 
 /**
@@ -74,3 +79,5 @@ fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.ge
 
 fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
     .updateOneById(id, *updates, options = UpdateOptions().upsert(true))
+
+fun Guild.preferredName(contactList: GuildContactList?) = contactList?.contacts?.firstOrNull { it.number == idLong }?.name ?: name

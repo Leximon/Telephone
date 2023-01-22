@@ -7,12 +7,13 @@ plugins {
 }
 
 group = "de.leximon"
-version = "1.0-SNAPSHOT"
+version = project.version
 
 repositories {
     mavenCentral()
     maven("https://jitpack.io/")
     maven("https://repo.tts-craft.de/releases")
+    maven("https://m2.dv8tion.net/releases")
 }
 
 dependencies {
@@ -26,6 +27,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.4.5")
     implementation("net.dv8tion:JDA:5.0.0-beta.1")
     implementation("com.github.minndevelopment:jda-ktx:17eb77a138ba356a3b0439afeddf77d4520c7c60")
+    implementation("com.sedmelluq:lavaplayer:1.3.77")
 }
 
 tasks.test {

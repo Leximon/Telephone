@@ -1,9 +1,6 @@
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.core.GuildSettings
-import de.leximon.telephone.core.VoiceChannelJoinRule
-import de.leximon.telephone.core.retrieveAndUpdateGuildSettings
-import de.leximon.telephone.core.updateGuildSettings
+import de.leximon.telephone.core.*
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.subcommand
@@ -33,6 +30,9 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
     }
     subcommand("mute-bots", "Sets whether voice should be transmitted from other bots") {
         option<Boolean>("enabled", "Enable or disable", required = true)
+    }
+    subcommand("sound-pack", "Sets the sounds used for calls (Default: Classic)") {
+        enumOption<SoundPack>("pack", "The sound pack", required = true)
     }
 
 
@@ -148,6 +148,17 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
         e.hook.success(
             "response.command.settings.mute-bots.${enabled.tlKey()}",
+            emoji = UnicodeEmoji.SETTINGS
+        ).queue()
+    }
+
+    onInteract("sound-pack", timeout = 1.minutes) {
+        val guild = it.guild!!
+        val pack = it.getEnumOption<SoundPack>("pack")!!
+        it.deferReply().queue()
+        guild.updateGuildSettings(GuildSettings::soundPack setTo pack)
+        it.hook.success(
+            "response.command.settings.sound-pack", pack.tl(guild),
             emoji = UnicodeEmoji.SETTINGS
         ).queue()
     }

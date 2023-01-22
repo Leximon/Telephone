@@ -1,7 +1,12 @@
 package de.leximon.telephone
 
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
+import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
+import de.leximon.telephone.core.Sound
+import de.leximon.telephone.listeners.interactionListener
 import de.leximon.telephone.util.*
+import de.leximon.telephone.util.audio.ResourceAudioSourceManager
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.CoroutineEventManager
 import dev.minn.jda.ktx.messages.EmbedBuilder
@@ -31,6 +36,7 @@ fun main(args: Array<String>) {
     val databaseConnectionString = getEnv("DB_CONNECTION_STRING")
 
     initDatabase(databaseConnectionString)
+    initAudio()
     Localization.init(
         "commands", "general",
         DiscordLocale.ENGLISH_US, // default locale
@@ -52,6 +58,15 @@ fun main(args: Array<String>) {
         callCommand(),
         settingsCommand()
     )
+    shardManager.interactionListener()
+}
+
+lateinit var audioPlayerManager: AudioPlayerManager
+
+fun initAudio() {
+    audioPlayerManager = DefaultAudioPlayerManager()
+    audioPlayerManager.registerSourceManager(ResourceAudioSourceManager())
+    Sound.init()
 }
 
 

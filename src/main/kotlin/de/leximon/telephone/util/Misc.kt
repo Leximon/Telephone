@@ -1,7 +1,25 @@
 package de.leximon.telephone.util
 
+import de.leximon.telephone.core.call.State
+import de.leximon.telephone.core.call.StateManager
+import dev.minn.jda.ktx.interactions.components.row
+import dev.minn.jda.ktx.messages.MessageEditBuilder
+import net.dv8tion.jda.api.entities.channel.ChannelType
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
+import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
+import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
+import net.dv8tion.jda.api.interactions.callbacks.IMessageEditCallback
+import net.dv8tion.jda.api.interactions.components.ActionComponent
+import net.dv8tion.jda.api.interactions.components.LayoutComponent
+import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction
+import java.time.Instant
+import java.util.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+
 const val EMBED_COLOR_NONE = 0x2F3136
 
+fun Long.asPhoneNumber() = toString().asPhoneNumber()
 fun String.asPhoneNumber(): String {
     val builder = StringBuilder(this)
     for (i in length - 4 downTo 1 step 4) {
@@ -26,3 +44,57 @@ fun getEnv(key: String): String {
         throw IllegalStateException("Environment variable $key cannot be blank")
     return value
 }
+
+fun Instant.asRelativeTimestamp(): String {
+    return "<t:" + Date.from(this).time / 1000 + ":R>"
+}
+
+/**
+ * Returns the [AudioChannel] of the user who executed the command.
+ * @throws [IllegalStateException] if the user is not in a voice channel or the bot has no access to the voice channel.
+ */
+fun GenericInteractionCreateEvent.getUsersAudioChannel(): AudioChannel {
+    val member = member!!
+    val voiceState = member.voiceState!!
+    val channel = voiceState.channel
+    if (channel == null || channel.type != ChannelType.VOICE)
+        throw IllegalStateException(tl("response.error.not_in_voice_channel"))
+    if (!guild!!.selfMember.hasAccess(channel))
+        throw IllegalStateException(tl("response.error.no-access.voice-channel", channel.asMention))
+    return channel
+}
+
+fun IMessageEditCallback.editByState(): StateManager.(State) -> Unit = {
+    val msg = MessageEditBuilder(
+        replace = true,
+        builder = it.buildMessage(this)
+    ).build()
+    if (isAcknowledged)
+        hook.editOriginal(msg).queue()
+    else editMessage(msg).queue()
+}
+
+
+fun GenericComponentInteractionCreateEvent.disableComponents(): MessageEditCallbackAction {
+    val newComponents = mutableListOf<LayoutComponent>()
+    message.components.forEach { layout ->
+        newComponents += row (*layout.components.map {
+            if (it is ActionComponent) it.asDisabled() else it
+        }.toTypedArray())
+    }
+    return editComponents(newComponents)
+}
+
+fun Duration.asTimeString(): String {
+    val seconds = inWholeMilliseconds / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+
+    val b = StringBuilder()
+    if (hours > 0) b.append(hours).append("h ")
+    if (minutes > 0) b.append(minutes % 60).append("m ")
+    if (seconds > 0) b.append(seconds % 60).append("s")
+    return b.toString()
+}
+
+operator fun Instant.minus(other: Instant) = (toEpochMilli() - other.toEpochMilli()).milliseconds
