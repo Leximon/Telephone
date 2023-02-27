@@ -8,8 +8,10 @@ import dev.minn.jda.ktx.interactions.commands.subcommand
 import dev.minn.jda.ktx.interactions.components.InlineModal
 import dev.minn.jda.ktx.interactions.components.getOption
 import dev.minn.jda.ktx.interactions.components.replyModal
+import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction
 import net.dv8tion.jda.api.sharding.ShardManager
 
@@ -17,6 +19,7 @@ const val MAX_CONTACTS = 25
 
 fun contactListCommand() = slashCommand("contact-list", "Add/Edit/Remove contacts") {
     isGuildOnly = true
+    defaultPermissions = DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER)
     subcommand("add", "Add a contact")
     subcommand("edit", "Edit a contact") {
         option<String>("contact", "The number of the contact", required = true, autocomplete = true)
@@ -43,7 +46,7 @@ fun contactListCommand() = slashCommand("contact-list", "Add/Edit/Remove contact
         val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber(e)
         val prevContact = e.guild!!.removeContact(contactNumber)
         if (prevContact != null)
-            e.success("response.modal.contact-list.removed", prevContact.name).queue()
+            e.success("response.modal.contact-list.removed", prevContact.name, emoji = Emojis.CONTACT_LIST).queue()
         else
             throw e.error("response.command.contact-list.unknown-contact")
     }
@@ -79,7 +82,7 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
 
             val success = guild.addContact(newName, newNumber)
             if (success)
-                e.success("response.modal.contact-list.added", newName).queue()
+                e.success("response.modal.contact-list.added", newName, emoji = Emojis.CONTACT_LIST).queue()
             else throw e.error("response.modal.contact-list.already-exists")
         }
         e.modalId.startsWith("edit_contact:") -> {
@@ -89,8 +92,8 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
             val prevContact = e.guild!!.editContact(number, newName, newNumber)
             when {
                 prevContact == null -> throw e.error("response.command.contact-list.unknown-contact")
-                prevContact.name != newName -> e.success("response.modal.contact-list.edited.renamed", prevContact.name, newName).queue()
-                else -> e.success("response.modal.contact-list.edited", prevContact.name).queue()
+                prevContact.name != newName -> e.success("response.modal.contact-list.edited.renamed", prevContact.name, newName, emoji = Emojis.CONTACT_LIST).queue()
+                else -> e.success("response.modal.contact-list.edited", prevContact.name, emoji = Emojis.CONTACT_LIST).queue()
             }
         }
     }

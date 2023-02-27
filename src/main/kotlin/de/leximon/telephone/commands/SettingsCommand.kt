@@ -47,7 +47,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         guild.updateGuildSettings(GuildSettings::callTextChannel setTo channel.id)
         e.hook.success(
             "response.command.settings.incoming-call-text-channel", channel.asMention,
-            emoji = UnicodeEmoji.SETTINGS
+            emoji = Emojis.SETTINGS
         ).queue()
     }
 
@@ -62,14 +62,14 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         if (settings.voiceChannelJoinRule == VoiceChannelJoinRule.SELECTED_CHANNEL) {
             e.hook.success(
                 "response.command.settings.incoming-call-voice-channel", channel.asMention,
-                emoji = UnicodeEmoji.SETTINGS
+                emoji = Emojis.SETTINGS
             ).queue()
             return@onInteract
         }
 
         e.hook.successWithOptions(
             "response.command.settings.incoming-call-voice-channel", channel.asMention,
-            emoji = UnicodeEmoji.SETTINGS
+            emoji = Emojis.SETTINGS
         ) {
             text("response.command.settings.incoming-call-voice-channel.set-join-rule")
             components += row(
@@ -82,7 +82,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
                 guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo VoiceChannelJoinRule.SELECTED_CHANNEL)
                 interaction.reply(
                     interaction.tl("response.command.settings.voice-channel-join-rule", VoiceChannelJoinRule.SELECTED_CHANNEL.tl(guild))
-                        .withEmoji(UnicodeEmoji.SETTINGS)
+                        .withEmoji(Emojis.SETTINGS)
                 ).queue()
                 return@awaitInteraction true
             }
@@ -98,14 +98,14 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         if (joinRule != VoiceChannelJoinRule.SELECTED_CHANNEL) {
             e.hook.success(
                 "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
-                emoji = UnicodeEmoji.SETTINGS
+                emoji = Emojis.SETTINGS
             ).queue()
             return@onInteract
         }
 
         e.hook.successWithOptions(
             "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
-            emoji = UnicodeEmoji.SETTINGS
+            emoji = Emojis.SETTINGS
         ) {
             text("response.command.settings.voice-channel-join-rule.set-voice-channel")
             components += listOf(
@@ -124,7 +124,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
                 val selectedChannel = interaction.values.first() as VoiceChannel
                 if (!guild.selfMember.hasAccess(selectedChannel)) {
                     interaction.reply_(
-                        interaction.tl("response.error.no-access.voice-channel", selectedChannel.asMention).withEmoji(UnicodeEmoji.ERROR),
+                        interaction.tl("response.error.no-access.voice-channel", selectedChannel.asMention).withEmoji(Emojis.ERROR),
                         ephemeral = true
                     ).queue()
                     return@awaitInteraction false
@@ -133,7 +133,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
                 guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo selectedChannel.id)
                 interaction.reply(
                     interaction.tl("response.command.settings.incoming-call-voice-channel", selectedChannel.asMention)
-                        .withEmoji(UnicodeEmoji.SETTINGS)
+                        .withEmoji(Emojis.SETTINGS)
                 ).queue()
                 return@awaitInteraction true
             }
@@ -148,7 +148,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
         e.hook.success(
             "response.command.settings.mute-bots.${enabled.tlKey()}",
-            emoji = UnicodeEmoji.SETTINGS
+            emoji = Emojis.SETTINGS
         ).queue()
     }
 
@@ -159,7 +159,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         guild.updateGuildSettings(GuildSettings::soundPack setTo pack)
         it.hook.success(
             "response.command.settings.sound-pack", pack.tl(guild),
-            emoji = UnicodeEmoji.SETTINGS
+            emoji = Emojis.SETTINGS
         ).queue()
     }
 }

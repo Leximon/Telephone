@@ -6,8 +6,8 @@ import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEditBuilder
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
+import net.dv8tion.jda.api.entities.emoji.Emoji
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
 import net.dv8tion.jda.api.interactions.callbacks.IMessageEditCallback
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
@@ -45,7 +45,7 @@ fun Boolean.tlKey() = if (this) "on" else "off"
 /**
  * Prefixes the string with the unicode emoji
  */
-fun String.withEmoji(emoji: UnicodeEmoji): String {
+fun String.withEmoji(emoji: Emoji): String {
     return emoji.forPrefix() + this
 }
 

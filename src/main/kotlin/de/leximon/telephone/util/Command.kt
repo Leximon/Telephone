@@ -12,12 +12,11 @@ import dev.minn.jda.ktx.messages.EmbedBuilder
 import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.editMessage
 import dev.minn.jda.ktx.messages.editMessage_
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
+import net.dv8tion.jda.api.entities.emoji.Emoji
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
-import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
@@ -85,7 +84,7 @@ inline fun handleExceptions(e: IReplyCallback, func: () -> Unit) {
     try {
         func()
     } catch (ex: CommandException) {
-        val message = (ex.message ?: "An error occurred").withEmoji(UnicodeEmoji.ERROR)
+        val message = (ex.message ?: "An error occurred").withEmoji(Emojis.ERROR)
         if (e.isAcknowledged)
             e.hook.editOriginal(message).queue()
         else e.reply(message).setEphemeral(true).queue()
@@ -111,7 +110,7 @@ fun IReplyCallback.error(
     key: String, vararg args: Any
 ) = CommandException(tl(key, *args))
 fun IReplyCallback.success(
-    key: String, vararg args: Any, emoji: UnicodeEmoji? = null
+    key: String, vararg args: Any, emoji: Emoji? = null
 ) = reply((emoji?.forPrefix() ?: "") + tl(key, *args))
 
 fun InteractionHook.error(
@@ -119,7 +118,7 @@ fun InteractionHook.error(
 ) = editOriginal(interaction.tl(key, *args))
 fun InteractionHook.success(
     key: String, vararg args: Any,
-    emoji: UnicodeEmoji? = null,
+    emoji: Emoji? = null,
 ) = editOriginal((emoji?.forPrefix() ?: "") + interaction.tl(key, *args))
 
 /**
@@ -127,7 +126,7 @@ fun InteractionHook.success(
  */
 suspend fun InteractionHook.successWithOptions(
     key: String, vararg args: Any,
-    emoji: UnicodeEmoji? = null, optionBuilder: MessageOptions.() -> Unit
+    emoji: Emoji? = null, optionBuilder: MessageOptions.() -> Unit
 ) {
     val options = MessageOptions(interaction).apply(optionBuilder)
     val message = (emoji?.forPrefix() ?: "") + interaction.tl(key, *args);
@@ -148,7 +147,7 @@ suspend fun InteractionHook.successWithOptions(
                             return@await true
 
                         e.reply(
-                            e.tl("response.error.not-allowed-to-interact").withEmoji(UnicodeEmoji.NOT_PERMITTED)
+                            e.tl("response.error.not-allowed-to-interact").withEmoji(Emojis.NOT_PERMITTED)
                         ).setEphemeral(true).queue()
                         return@await false
                     }
