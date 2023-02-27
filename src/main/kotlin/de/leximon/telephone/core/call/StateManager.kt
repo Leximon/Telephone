@@ -90,10 +90,10 @@ class DialingFailedState(private val reason: Reason) : State {
     }
 
     enum class Reason(val title: String, val description: String? = null) {
-        BLOCKED_BY_RECIPIENT("embed.call.blocked_by_recipient", "embed.call.blocked_by_recipient.description"),
-        RECIPIENT_NOT_FOUND("embed.call.recipient_not_found", "embed.call.recipient_not_found.description"),
-        RECIPIENT_ALREADY_IN_CALL("embed.call.recipient_already_in_call"),
-        RECIPIENT_NO_TEXT_CHANNEL("embed.call.recipient_no_text_channel", "embed.call.recipient_no_text_channel.description")
+        BLOCKED_BY_RECIPIENT("embed.call.blocked-by-recipient", "embed.call.blocked-by-recipient.description"),
+        RECIPIENT_NOT_FOUND("embed.call.recipient-not-found", "embed.call.recipient-not-found.description"),
+        RECIPIENT_ALREADY_IN_CALL("embed.call.recipient-already-in-call"),
+        RECIPIENT_NO_TEXT_CHANNEL("embed.call.recipient-no-text-channel", "embed.call.recipient-no-text-channel.description")
     }
 }
 

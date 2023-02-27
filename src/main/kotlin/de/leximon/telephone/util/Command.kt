@@ -17,11 +17,13 @@ import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
 import net.dv8tion.jda.api.interactions.Interaction
 import net.dv8tion.jda.api.interactions.InteractionHook
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
 import net.dv8tion.jda.api.interactions.commands.Command.Choice
 import net.dv8tion.jda.api.interactions.commands.build.Commands
 import net.dv8tion.jda.api.interactions.commands.build.OptionData
@@ -62,7 +64,9 @@ fun SlashCommandData.onAutoComplete(
 ) {
     val commandPath = "$name $path".trim()
     shardManager.listener<CommandAutoCompleteInteractionEvent>(timeout = timeout) { e ->
-        if (e.fullCommandName != commandPath || (option != null && e.focusedOption.name != option))
+        if (option != null && e.focusedOption.name != option)
+            return@listener
+        if (e.fullCommandName != commandPath && !(path.isEmpty() && e.fullCommandName.startsWith(commandPath)))
             return@listener
         consumer(e).let { choices ->
             val value = e.focusedOption.value
@@ -77,7 +81,7 @@ fun SlashCommandData.onAutoComplete(
 /**
  * Handles the exceptions that may occur during the execution of a command.
  */
-private inline fun handleExceptions(e: SlashCommandInteractionEvent, func: () -> Unit) {
+inline fun handleExceptions(e: IReplyCallback, func: () -> Unit) {
     try {
         func()
     } catch (ex: CommandException) {
@@ -103,12 +107,13 @@ private inline fun handleExceptions(e: SlashCommandInteractionEvent, func: () ->
 // response utils
 class CommandException(message: String) : RuntimeException(message)
 
-fun SlashCommandInteractionEvent.error(
+fun IReplyCallback.error(
     key: String, vararg args: Any
 ) = CommandException(tl(key, *args))
-fun SlashCommandInteractionEvent.success(
+fun IReplyCallback.success(
     key: String, vararg args: Any, emoji: UnicodeEmoji? = null
 ) = reply((emoji?.forPrefix() ?: "") + tl(key, *args))
+
 fun InteractionHook.error(
     key: String, vararg args: Any
 ) = editOriginal(interaction.tl(key, *args))

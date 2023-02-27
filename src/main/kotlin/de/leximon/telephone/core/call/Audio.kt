@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.audio.AudioSendHandler
 import net.dv8tion.jda.api.audio.CombinedAudio
 import net.dv8tion.jda.api.managers.AudioManager
 import java.nio.ByteBuffer
-import java.util.Queue
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class Audio(
@@ -25,7 +24,7 @@ class Audio(
         addListener(eventHandler)
     }
     private var shouldPlaySounds = false
-    private val transferHandler = TransferHandler().also {
+    private val handler = Handler().also {
         audioManager.sendingHandler = it
         audioManager.receivingHandler = it
     }
@@ -49,10 +48,10 @@ class Audio(
         shouldPlaySounds = false
     }
 
-    inner class TransferHandler : AudioSendHandler, AudioReceiveHandler {
+    inner class Handler : AudioSendHandler, AudioReceiveHandler {
         val queue = ConcurrentLinkedQueue<ByteArray>()
-        val buffer = ByteBuffer.allocate(1024)
-        val frame = MutableAudioFrame().apply { setBuffer(buffer) }
+        private val buffer = ByteBuffer.allocate(1024)
+        private val frame = MutableAudioFrame().apply { setBuffer(buffer) }
 
         // Receiving
         override fun canReceiveCombined() = queue.size < 10
@@ -61,7 +60,7 @@ class Audio(
             if (shouldPlaySounds || combinedAudio.users.isEmpty())
                 return
             val data = combinedAudio.getAudioData(1.0)
-            participant.recipient?.audio?.transferHandler?.queue?.add(data)
+            participant.recipient?.audio?.handler?.queue?.add(data)
         }
 
         // Sending

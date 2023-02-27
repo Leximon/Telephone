@@ -11,11 +11,11 @@ enum class VoiceChannelJoinRule(private val defaultName: String, private val tlK
     ),
     SELECTED_CHANNEL(
         "Selected channel",
-        "response.command.settings.voice-channel-join-rule.selected_channel"
+        "response.command.settings.voice-channel-join-rule.selected-channel"
     ),
     MOST_USERS(
         "Channel with most users",
-        "response.command.settings.voice-channel-join-rule.channel_with_most_users"
+        "response.command.settings.voice-channel-join-rule.channel-with-most-users"
     );
 
     override fun toString() = defaultName

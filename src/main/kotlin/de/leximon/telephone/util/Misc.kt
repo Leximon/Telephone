@@ -7,8 +7,10 @@ import dev.minn.jda.ktx.messages.MessageEditBuilder
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
 import net.dv8tion.jda.api.interactions.callbacks.IMessageEditCallback
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
 import net.dv8tion.jda.api.interactions.components.ActionComponent
 import net.dv8tion.jda.api.interactions.components.LayoutComponent
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction
@@ -27,6 +29,15 @@ fun String.asPhoneNumber(): String {
     }
     builder.insert(0, "+")
     return builder.toString()
+}
+
+/**
+ * Parses a phone number from a string to the long representation.
+ * @throws CommandException if the number doesn't meet the requirements
+ */
+fun String.parsePhoneNumber(e: IReplyCallback): Long {
+    val number = replace(Regex("[\\s+]"), "")
+    return number.toLongOrNull() ?: throw e.error("response.error.invalid-phone-number", this)
 }
 
 fun Boolean.tlKey() = if (this) "on" else "off"
@@ -58,7 +69,7 @@ fun GenericInteractionCreateEvent.getUsersAudioChannel(): AudioChannel {
     val voiceState = member.voiceState!!
     val channel = voiceState.channel
     if (channel == null || channel.type != ChannelType.VOICE)
-        throw IllegalStateException(tl("response.error.not_in_voice_channel"))
+        throw IllegalStateException(tl("response.error.not-in-voice-channel"))
     if (!guild!!.selfMember.hasAccess(channel))
         throw IllegalStateException(tl("response.error.no-access.voice-channel", channel.asMention))
     return channel

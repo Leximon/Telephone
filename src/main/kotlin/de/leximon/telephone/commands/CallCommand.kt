@@ -8,7 +8,6 @@ import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.components.getOption
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import kotlin.time.Duration.Companion.minutes
 
 const val CALL_COMMAND_NAME = "call"
@@ -22,7 +21,7 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
         if (!e.channel.canTalk())
             throw e.error("response.error.no-access.text-channel", e.channel.asMention)
         if (guild.asParticipant() != null)
-            throw e.error("response.command.call.already_in_use", guild.name)
+            throw e.error("response.command.call.already-in-use", guild.name)
 
         val recipient = e.getOption<String>("number")!!.parsePhoneNumber(e)
         val messageChannel = e.channel as GuildMessageChannel
@@ -39,15 +38,7 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
     }
     onAutoComplete { e ->
         val contactList = e.guild!!.retrieveContactList().contacts
-        return@onAutoComplete contactList.map(Contact::asChoice)
+        return@onAutoComplete contactList.map(Contact::asChoice).take(25)
     }
 }
 
-/**
- * Parses a phone number from a string to the long representation.
- * @throws CommandException if the number doesn't meet the requirements
- */
-private fun String.parsePhoneNumber(e: SlashCommandInteractionEvent): Long {
-    val number = replace(Regex("[\\s+]"), "")
-    return number.toLongOrNull() ?: throw e.error("response.error.invalid-phone-number", this)
-}

@@ -4,7 +4,7 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
 import de.leximon.telephone.core.Sound
-import de.leximon.telephone.listeners.interactionListener
+import de.leximon.telephone.listeners.buttonListener
 import de.leximon.telephone.util.*
 import de.leximon.telephone.util.audio.ResourceAudioSourceManager
 import dev.minn.jda.ktx.coroutines.await
@@ -56,9 +56,11 @@ fun main(args: Array<String>) {
         helpCommand(),
         phoneNumberCommand(),
         callCommand(),
-        settingsCommand()
+        settingsCommand(),
+        contactListCommand()
     )
-    shardManager.interactionListener()
+    shardManager.buttonListener()
+    shardManager.contactListModalListener()
 }
 
 lateinit var audioPlayerManager: AudioPlayerManager

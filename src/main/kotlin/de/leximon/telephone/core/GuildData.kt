@@ -69,6 +69,39 @@ fun Guild.retrieveContactList() = database.getCollection<GuildContactList>("guil
         .findOneById(id) ?: GuildContactList(id)
 
 /**
+ * Removes a contact from the guild contact list
+ * @return null if the contact was not found, otherwise the removed contact
+ */
+fun Guild.removeContact(number: Long) = database.getCollection<GuildContactList>("guildContactLists")
+    .findOneAndUpdate(
+        GuildContactList::_id eq id,
+        pullByFilter(GuildContactList::contacts, Contact::number eq number)
+    )?.contacts?.find { c -> c.number == number }
+
+/**
+ * Edits a contact in the guild contact list
+ * @return null if the contact was not found, otherwise the old contact
+ */
+fun Guild.editContact(number: Long, newName: String, newNumber: Long) = database.getCollection<GuildContactList>("guildContactLists")
+    .findOneAndUpdate(
+        and(
+            GuildContactList::_id eq id,
+            GuildContactList::contacts / Contact::number eq number
+        ),
+        set(GuildContactList::contacts.posOp setTo Contact(newName, newNumber))
+    )?.contacts?.find { c -> c.number == number }
+
+/**
+ * Adds a contact to the guild contact list
+ * @return true if the contact was added, false if the contact already exists
+ */
+fun Guild.addContact(name: String, number: Long) = database.getCollection<GuildContactList>("guildContactLists")
+    .updateOne(and(
+        GuildContactList::_id eq id,
+        GuildContactList::contacts / Contact::number ne number
+    ), push(GuildContactList::contacts, Contact(name, number))).modifiedCount >= 1
+
+/**
  * Retrieves the guild block list from the database or creates a new one if it doesn't exist
  */
 fun Guild.retrieveBlockList() = database.getCollection<GuildBlockList>("guildBlockLists")
