@@ -1,18 +1,11 @@
-@file:Suppress("MemberVisibilityCanBePrivate")
-
 package de.leximon.telephone.core.call
 
 import de.leximon.telephone.core.*
-import de.leximon.telephone.util.disableComponents
-import de.leximon.telephone.util.editByState
-import de.leximon.telephone.util.getUsersAudioChannel
 import dev.minn.jda.ktx.events.await
-import dev.minn.jda.ktx.messages.reply_
 import kotlinx.coroutines.*
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
