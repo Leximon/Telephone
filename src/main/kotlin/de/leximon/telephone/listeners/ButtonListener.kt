@@ -1,5 +1,6 @@
 package de.leximon.telephone.listeners
 
+import de.leximon.telephone.commands.replyContactModal
 import de.leximon.telephone.core.call.*
 import de.leximon.telephone.util.disableComponents
 import de.leximon.telephone.util.editByState
@@ -10,6 +11,8 @@ import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.sharding.ShardManager
 import kotlin.time.Duration.Companion.seconds
+
+const val ADD_CONTACT_ID = "add-contact"
 
 fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 30.seconds) { e ->
     val participant = e.guild?.asParticipant()
@@ -52,6 +55,11 @@ fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 3
                 stateManager.setState(CallSuccessState(outgoing, startTimestamp), e.editByState())
                 recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
                 closeBothSidesWithSound()
+            }
+
+            // Add contact
+            ADD_CONTACT_ID -> recipient?.let {
+                e.replyContactModal(it.guild.name, it.guild.idLong).queue()
             }
         }
     }

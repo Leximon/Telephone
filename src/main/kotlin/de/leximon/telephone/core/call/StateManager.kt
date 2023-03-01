@@ -1,9 +1,11 @@
 package de.leximon.telephone.core.call
 
+import de.leximon.telephone.listeners.ADD_CONTACT_ID
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.components.danger
 import dev.minn.jda.ktx.interactions.components.row
+import dev.minn.jda.ktx.interactions.components.secondary
 import dev.minn.jda.ktx.interactions.components.success
 import dev.minn.jda.ktx.messages.*
 import java.time.Instant
@@ -115,7 +117,13 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
             }
             color = EMBED_COLOR_NONE
         }
-        components += row(danger(HANGUP_ID, tl("button.hangup")).withDisabled(disableComponents))
+        components += row(
+            danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP).withDisabled(disableComponents),
+            secondary(
+                ADD_CONTACT_ID,
+                emoji = Emojis.ADD_CONTACT
+            ).withDisabled(disableComponents || participant.recipientInfo.isFamiliar)
+        )
     }
 }
 
@@ -131,8 +139,9 @@ class IncomingCallState(private val userCount: Int) : State {
             color = EMBED_COLOR_NONE
         }
         components += row(
-            success(PICKUP_ID, tl("button.pickup")),
-            danger(HANGUP_ID, tl("button.hangup"))
+            success(PICKUP_ID, tl("button.pickup"), emoji = Emojis.PICKUP),
+            danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP),
+            secondary(ADD_CONTACT_ID, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
         )
     }
 }
@@ -199,7 +208,8 @@ class CallActiveState(
             description = tl("embed.call.active.description", startTimestamp.asRelativeTimestamp())
             color = EMBED_COLOR_NONE
             components += row(
-                danger(HANGUP_ID, tl("button.hangup"))
+                danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP),
+                secondary(ADD_CONTACT_ID, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
             )
         }
     }

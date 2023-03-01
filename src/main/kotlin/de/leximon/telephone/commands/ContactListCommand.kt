@@ -10,7 +10,7 @@ import dev.minn.jda.ktx.interactions.components.getOption
 import dev.minn.jda.ktx.interactions.components.replyModal
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
-import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.interactions.callbacks.IModalCallback
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction
 import net.dv8tion.jda.api.sharding.ShardManager
@@ -40,7 +40,7 @@ fun contactListCommand() = slashCommand("contact-list", "Add/Edit/Remove contact
         val contactList = e.guild!!.retrieveContactList().contacts
         val contact = contactList.find { c -> c.number == contactNumber }
             ?: throw e.error("response.command.contact-list.unknown-contact")
-        e.replyContactModal(contact.name, contact.number).queue()
+        e.replyContactModal(contact.name, contact.number, edit = true).queue()
     }
     onInteract("remove") { e ->
         val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber(e)
@@ -57,17 +57,25 @@ fun contactListCommand() = slashCommand("contact-list", "Add/Edit/Remove contact
     }
 }
 
-private fun SlashCommandInteractionEvent.replyContactModal(
+fun IModalCallback.replyContactModal(
     name: String? = null,
-    number: Long? = null
+    number: Long? = null,
+    edit: Boolean = false
 ): ModalCallbackAction {
     val struct: InlineModal.() -> Unit = {
         short("name", guild!!.tl("modal.contact.name"), required = true, requiredLength = 1..100, value = name)
-        short("number", guild!!.tl("modal.contact.number"), required = true, requiredLength = 1..32, value = number?.asPhoneNumber())
+        short(
+            "number",
+            guild!!.tl("modal.contact.number"),
+            required = true,
+            requiredLength = 1..32,
+            value = number?.asPhoneNumber()
+        )
     }
-    return if (number == null)
-        replyModal("add_contact", guild!!.tl("modal.contact.title.add"), builder = struct)
-    else replyModal("edit_contact:${number}", guild!!.tl("modal.contact.title.edit"), builder = struct)
+
+    return if (edit)
+        replyModal("edit_contact:${number}", guild!!.tl("modal.contact.title.edit"), builder = struct)
+    else replyModal("add_contact", guild!!.tl("modal.contact.title.add"), builder = struct)
 }
 
 fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { e -> handleExceptions(e) {

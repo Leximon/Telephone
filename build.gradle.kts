@@ -25,7 +25,7 @@ dependencies {
     implementation("org.litote.kmongo:kmongo:4.8.0")
 
     implementation("ch.qos.logback:logback-classic:1.4.5")
-    implementation("net.dv8tion:JDA:5.0.0-beta.1")
+    implementation("net.dv8tion:JDA:5.0.0-beta.5")
     implementation("com.github.minndevelopment:jda-ktx:17eb77a138ba356a3b0439afeddf77d4520c7c60")
     implementation("com.sedmelluq:lavaplayer:1.3.77")
 }
