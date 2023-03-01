@@ -1,10 +1,11 @@
 package de.leximon.telephone.commands
 
 import de.leximon.telephone.util.*
+import dev.minn.jda.ktx.interactions.commands.restrict
 import dev.minn.jda.ktx.messages.EmbedBuilder
 
 fun phoneNumberCommand() = slashCommand("phone-number", "Shows the phone number of this discord server") {
-    isGuildOnly = true
+    restrict(guild = true)
 
     onInteract { e ->
         e.replyEmbeds(EmbedBuilder {

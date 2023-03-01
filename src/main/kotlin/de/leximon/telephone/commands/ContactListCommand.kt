@@ -4,22 +4,22 @@ import de.leximon.telephone.core.*
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.events.listener
 import dev.minn.jda.ktx.interactions.commands.option
+import dev.minn.jda.ktx.interactions.commands.restrict
 import dev.minn.jda.ktx.interactions.commands.subcommand
 import dev.minn.jda.ktx.interactions.components.InlineModal
 import dev.minn.jda.ktx.interactions.components.getOption
 import dev.minn.jda.ktx.interactions.components.replyModal
-import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction
 import net.dv8tion.jda.api.sharding.ShardManager
 
+const val CONTACT_LIST_COMMAND_NAME = "contact-list"
 const val MAX_CONTACTS = 25
 
-fun contactListCommand() = slashCommand("contact-list", "Add/Edit/Remove contacts") {
-    isGuildOnly = true
-    defaultPermissions = DefaultMemberPermissions.enabledFor(Permission.MANAGE_SERVER)
+fun contactListCommand() = slashCommand(CONTACT_LIST_COMMAND_NAME, "Add/Edit/Remove contacts") {
+    restrict(guild = true, DefaultMemberPermissions.DISABLED)
     subcommand("add", "Add a contact")
     subcommand("edit", "Edit a contact") {
         option<String>("contact", "The number of the contact", required = true, autocomplete = true)

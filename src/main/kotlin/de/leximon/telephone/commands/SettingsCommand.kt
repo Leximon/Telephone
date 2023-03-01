@@ -3,6 +3,7 @@ package de.leximon.telephone.commands
 import de.leximon.telephone.core.*
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.interactions.commands.option
+import dev.minn.jda.ktx.interactions.commands.restrict
 import dev.minn.jda.ktx.interactions.commands.subcommand
 import dev.minn.jda.ktx.interactions.components.*
 import dev.minn.jda.ktx.messages.reply_
@@ -17,10 +18,13 @@ import org.litote.kmongo.setTo
 import kotlin.time.Duration.Companion.minutes
 
 fun settingsCommand() = slashCommand("settings", "Configurations for the telephone bot") {
-    isGuildOnly = true
-    defaultPermissions = DefaultMemberPermissions.DISABLED
+    restrict(guild = true, DefaultMemberPermissions.DISABLED)
     subcommand("incoming-call-text-channel", "Sets the text channel for incoming calls") {
-        option<Channel>("channel", "The text channel for incoming calls", required = true) { channelTypes += ChannelType.TEXT }
+        option<Channel>(
+            "channel",
+            "The text channel for incoming calls",
+            required = true
+        ) { channelTypes += ChannelType.TEXT }
     }
     subcommand("incoming-call-voice-channel", "Sets the voice channel for incoming calls (voice-channel-join-rule must be \"Selected channel\")") {
         option<Channel>("channel", "The voice channel for incoming calls", required = true) { channelTypes += ChannelType.VOICE }

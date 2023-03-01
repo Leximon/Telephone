@@ -1,9 +1,9 @@
 package de.leximon.telephone.util
 
 import com.mongodb.MongoException
-import de.leximon.telephone.DEV
 import de.leximon.telephone.LOGGER
 import de.leximon.telephone.shardManager
+import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.CoroutineEventListener
 import dev.minn.jda.ktx.events.await
 import dev.minn.jda.ktx.events.listener
@@ -13,24 +13,29 @@ import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.editMessage
 import dev.minn.jda.ktx.messages.editMessage_
 import kotlinx.coroutines.withTimeoutOrNull
+import net.dv8tion.jda.api.JDA
+import net.dv8tion.jda.api.Permission
+import net.dv8tion.jda.api.entities.Member
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.entities.emoji.Emoji
-import net.dv8tion.jda.api.events.guild.GenericGuildEvent
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent
-import net.dv8tion.jda.api.events.guild.GuildReadyEvent
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
 import net.dv8tion.jda.api.interactions.Interaction
 import net.dv8tion.jda.api.interactions.InteractionHook
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
+import net.dv8tion.jda.api.interactions.commands.Command
 import net.dv8tion.jda.api.interactions.commands.Command.Choice
+import net.dv8tion.jda.api.interactions.commands.PrivilegeConfig
 import net.dv8tion.jda.api.interactions.commands.build.Commands
 import net.dv8tion.jda.api.interactions.commands.build.OptionData
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
+import net.dv8tion.jda.api.interactions.commands.privileges.IntegrationPrivilege
 import net.dv8tion.jda.api.interactions.components.ActionComponent
 import net.dv8tion.jda.api.interactions.components.LayoutComponent
 import net.dv8tion.jda.api.sharding.ShardManager
+import okhttp3.internal.toImmutableMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -197,31 +202,105 @@ inline fun <reified E: Enum<E>> SubcommandData.enumOption(
 /**
  * Returns the value of the option or null if it is not present.
  */
-inline fun <reified E: Enum<E>> SlashCommandInteractionEvent.getEnumOption(name: String): E? {
+inline fun <reified E : Enum<E>> SlashCommandInteractionEvent.getEnumOption(name: String): E? {
     val value = getOption(name)?.asLong?.toInt()
         ?: return null
     return E::class.java.enumConstants[value]
 }
 
 
-// init
-fun ShardManager.initCommands(vararg commands: SlashCommandData) {
-    // register commands on guilds if dev mode is enabled
-    if (DEV) {
-        listener<GenericGuildEvent> { event ->
-            if (event !is GuildReadyEvent && event !is GuildJoinEvent)
-                return@listener
-            val guild = event.guild
-            guild.updateCommands()
-                .addCommands(*commands)
-                .queue()
-        }
-        return
+private lateinit var commandIds: Map<Int, Map<String, Command>>
+
+suspend fun ShardManager.initCommands(vararg commands: SlashCommandData) {
+    val mutableCommandIds = mutableMapOf<Int, Map<String, Command>>()
+    for (jda in shards) {
+        val retrievedCommands = jda.updateCommands()
+            .addCommands(*commands)
+            .await()
+        mutableCommandIds[jda.shardInfo.shardId] = retrievedCommands.associateBy({ it.name }, { it })
+        LOGGER.info("Registered commands for shard [${jda.shardInfo.shardId}/${shards.size}]!")
+    }
+    commandIds = mutableCommandIds.toImmutableMap()
+}
+
+/**
+ * Returns the command with the given name for the current shard.
+ * @throws IllegalStateException if the command is not found
+ */
+fun JDA.getCommandByName(name: String): Command {
+    val shardId = shardInfo.shardId
+    return commandIds[shardId]?.get(name)
+        ?: throw IllegalStateException("Command $name not found for shard [$shardId]")
+}
+
+/**
+ * Checks if the given member has the permission to execute the given command.
+ *
+ * A flowchart can be found [here](https://discord.com/assets/6da3bd6082744a5eca59bb032c890092.svg).
+ * @param channel the channel for which the permission check should be performed
+ * @param command the command
+ * @param member the member
+ */
+@Suppress("DuplicatedCode")
+fun PrivilegeConfig.hasCommandPermission(channel: GuildMessageChannel, command: Command, member: Member): Boolean {
+    if (member.hasPermission(Permission.ADMINISTRATOR))
+        return true
+
+    val defaultMemberPermissions = command.defaultPermissions.permissionsRaw
+    val appPrivileges = applicationPrivileges ?: emptyList()
+    val commandPrivileges = getCommandPrivileges(command) ?: emptyList()
+
+    fun defaultPermissionCheck(): Boolean {
+        if (defaultMemberPermissions == null)
+            return true
+        if (defaultMemberPermissions == 0L)
+            return false
+        return member.hasPermission(channel, Permission.getPermissions(defaultMemberPermissions))
     }
 
-    // register commands globally
-    for (jda in shards)
-        jda.updateCommands()
-            .addCommands(*commands)
-            .queue()
+    fun userRoleChecks(): Boolean {
+        // command-level user/role permission checks
+        commandPrivileges.find { it.type == IntegrationPrivilege.Type.USER && it.idLong == member.idLong }
+            ?.run { return isEnabled }
+        commandPrivileges.filter { it.type == IntegrationPrivilege.Type.ROLE && member.roles.any { r -> r.idLong == it.idLong } }
+            .let {
+                if (it.isEmpty())
+                    return@let // if no roles are found, skip
+                for (privilege in it)
+                    if (privilege.isEnabled)
+                        return true // if at least one role has the permission enabled
+                return false
+            }
+        commandPrivileges.find { it.targetsEveryone() }
+            ?.run { return isEnabled }
+
+        // app-level user/role permission checks
+        appPrivileges.find { it.type == IntegrationPrivilege.Type.USER && it.idLong == member.idLong }
+            ?.run { return if (isEnabled) defaultPermissionCheck() else false }
+        appPrivileges.filter { it.type == IntegrationPrivilege.Type.ROLE && member.roles.any { r -> r.idLong == it.idLong } }
+            .let {
+                if (it.isEmpty())
+                    return@let // if no roles are found, skip
+                for (privilege in it)
+                    if (privilege.isEnabled)
+                        return defaultPermissionCheck() // if at least one role has the permission enabled
+                return false
+            }
+        appPrivileges.find { it.targetsEveryone() }
+            ?.run { return if (isEnabled) defaultPermissionCheck() else false }
+        return defaultPermissionCheck()
+    }
+
+    // command-level channel permission checks
+    commandPrivileges.find { it.type == IntegrationPrivilege.Type.CHANNEL && it.idLong == channel.idLong }
+        ?.run { return if (isEnabled) userRoleChecks() else false }
+    commandPrivileges.find { it.targetsAllChannels() }
+        ?.run { return if (isEnabled) userRoleChecks() else false }
+
+    // app-level channel permission checks
+    appPrivileges.find { it.type == IntegrationPrivilege.Type.CHANNEL && it.idLong == channel.idLong }
+        ?.run { return if (isEnabled) userRoleChecks() else false }
+    appPrivileges.find { it.targetsAllChannels() }
+        ?.run { return if (isEnabled) userRoleChecks() else false }
+    return userRoleChecks()
 }

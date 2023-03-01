@@ -8,6 +8,7 @@ import de.leximon.telephone.core.retrieveSettings
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.commands.option
+import dev.minn.jda.ktx.interactions.commands.restrict
 import dev.minn.jda.ktx.interactions.components.getOption
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
@@ -16,8 +17,13 @@ import kotlin.time.Duration.Companion.minutes
 const val CALL_COMMAND_NAME = "call"
 
 fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord server") {
-    isGuildOnly = true
-    option<String>("number", "The phone number of the discord server (Discord Server ID)", required = true, autocomplete = true)
+    restrict(guild = true)
+    option<String>(
+        "number",
+        "The phone number of the discord server (Discord Server ID)",
+        required = true,
+        autocomplete = true
+    )
 
     onInteract(timeout = 2.minutes) {e ->
         val guild = e.guild!!
