@@ -83,17 +83,31 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
             val success = guild.addContact(newName, newNumber)
             if (success)
                 e.success("response.modal.contact-list.added", newName, emoji = Emojis.CONTACT_LIST).queue()
-            else throw e.error("response.modal.contact-list.already-exists")
+            else throw e.error("response.modal.contact-list.already-exists", newName)
         }
         e.modalId.startsWith("edit_contact:") -> {
             val number = e.modalId.split(":")[1].toLong()
             val newName = e.getValue("name")!!.asString
             val newNumber = e.getValue("number")!!.asString.parsePhoneNumber(e)
-            val prevContact = e.guild!!.editContact(number, newName, newNumber)
-            when {
-                prevContact == null -> throw e.error("response.command.contact-list.unknown-contact")
-                prevContact.name != newName -> e.success("response.modal.contact-list.edited.renamed", prevContact.name, newName, emoji = Emojis.CONTACT_LIST).queue()
-                else -> e.success("response.modal.contact-list.edited", prevContact.name, emoji = Emojis.CONTACT_LIST).queue()
+            try {
+                val prevContact = e.guild!!.editContact(number, newName, newNumber)
+                when {
+                    prevContact == null -> throw e.error("response.command.contact-list.unknown-contact")
+                    prevContact.name != newName -> e.success(
+                        "response.modal.contact-list.edited.renamed",
+                        prevContact.name,
+                        newName,
+                        emoji = Emojis.CONTACT_LIST
+                    ).queue()
+
+                    else -> e.success(
+                        "response.modal.contact-list.edited",
+                        prevContact.name,
+                        emoji = Emojis.CONTACT_LIST
+                    ).queue()
+                }
+            } catch (ex: IllegalArgumentException) {
+                throw e.error("response.modal.contact-list.already-exists", newName)
             }
         }
     }

@@ -28,7 +28,8 @@ class Participant(
     val stateManager = StateManager(this)
     var audio: Audio? = null
     /**
-     * [recipient] will be initialized once the calling started, but we need the information before that
+     * [recipient] will be initialized once the calling started, but we need the information sometimes earlier
+     * @see CallFailedState
      */
     var recipientInfo: RecipientInfo = RecipientInfo(recipientId)
     var recipient: Participant? = null
@@ -63,7 +64,7 @@ class Participant(
         val recipientParticipation = recipientGuild.asParticipant()
         val recipientTextChannel = recipientSettings.callTextChannel?.let { recipientGuild.getTextChannelById(it) }
         // set the recipient info so that the next time the state changed the guild name is shown
-        recipientInfo.set(recipientGuild, recipientSettings, contactList, recipientTextChannel)
+        recipientInfo.set(contactList, recipientGuild, recipientSettings, recipientTextChannel)
 
         when {
             recipientBlockList.contains(guild.idLong) ->
@@ -181,31 +182,58 @@ class Participant(
      * Sets the recipient and its information
      */
     private fun setRecipientInfo(recipient: Participant) {
-        recipientInfo.set(recipient)
+        recipientInfo.set(guild.retrieveContactList(), recipient)
         this.recipient = recipient
     }
 
     data class RecipientInfo(
         val id: Long,
         var guild: Guild? = null,
+        /**
+         * The name of the guild. This can also be the name used in the contact list.
+         * @see isFamiliar
+         */
         var name: String? = null,
         var iconUrl: String? = null,
         var messageChannel: GuildMessageChannel? = null,
-        var settings: GuildSettings? = null
+        var settings: GuildSettings? = null,
+        /**
+         * Whether the recipient is added to the contact list of the guild.
+         */
+        var isFamiliar: Boolean = false
     ) {
-        fun set(guild: Guild?, settings: GuildSettings?, contactList: GuildContactList?, messageChannel: GuildMessageChannel?) {
+        /**
+         * Sets the recipient info
+         * @param ownContactList The own contact list of the guild
+         * @param guild The guild of the recipient
+         * @param settings The settings of the recipient
+         * @param messageChannel The message channel of the recipient
+         */
+        fun set(
+            ownContactList: GuildContactList?,
+            guild: Guild?,
+            settings: GuildSettings?,
+            messageChannel: GuildMessageChannel?
+        ) {
             this.guild = guild?.also {
-                this.name = it.preferredName(contactList)
+                val contact = it.getAsContact(ownContactList)
+                this.isFamiliar = contact != null
+                this.name = contact?.name ?: it.name
                 this.iconUrl = it.iconUrl
             }
             this.messageChannel = messageChannel
             this.settings = settings
         }
 
-        fun set(recipient: Participant) = set(
+        /**
+         * Sets the recipient info
+         * @param ownContactList The own contact list of the guild
+         * @param recipient The recipient
+         */
+        fun set(ownContactList: GuildContactList?, recipient: Participant) = set(
+            ownContactList,
             recipient.guild,
             recipient.guildSettings,
-            recipient.guild.retrieveContactList(),
             recipient.messageChannel
         )
     }

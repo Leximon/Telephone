@@ -2,6 +2,7 @@
 
 package de.leximon.telephone.core
 
+import com.mongodb.MongoWriteException
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.util.asPhoneNumber
@@ -81,25 +82,54 @@ fun Guild.removeContact(number: Long) = database.getCollection<GuildContactList>
 /**
  * Edits a contact in the guild contact list
  * @return null if the contact was not found, otherwise the old contact
+ * @throws IllegalArgumentException if a contact with the new name already exists
  */
-fun Guild.editContact(number: Long, newName: String, newNumber: Long) = database.getCollection<GuildContactList>("guildContactLists")
-    .findOneAndUpdate(
+fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? {
+    val collection = database.getCollection<GuildContactList>("guildContactLists")
+    val alreadyExists = collection.find(
+        and(
+            GuildContactList::_id eq id,
+            GuildContactList::contacts.elemMatch(
+                and(
+                    Contact::name eq newName,
+                    Contact::number ne number
+                )
+            )
+        )
+    ).any()
+    if (alreadyExists)
+        throw IllegalArgumentException("A contact with the name $newName already exists")
+
+    return collection.findOneAndUpdate(
         and(
             GuildContactList::_id eq id,
             GuildContactList::contacts / Contact::number eq number
         ),
         set(GuildContactList::contacts.posOp setTo Contact(newName, newNumber))
     )?.contacts?.find { c -> c.number == number }
+}
 
 /**
  * Adds a contact to the guild contact list
  * @return true if the contact was added, false if the contact already exists
  */
-fun Guild.addContact(name: String, number: Long) = database.getCollection<GuildContactList>("guildContactLists")
-    .updateOne(and(
-        GuildContactList::_id eq id,
-        GuildContactList::contacts / Contact::number ne number
-    ), push(GuildContactList::contacts, Contact(name, number))).modifiedCount >= 1
+fun Guild.addContact(name: String, number: Long): Boolean {
+    try {
+        return database.getCollection<GuildContactList>("guildContactLists")
+            .updateOne(
+                and(
+                    GuildContactList::_id eq id,
+                    GuildContactList::contacts / Contact::name ne name
+                ),
+                addToSet(GuildContactList::contacts, Contact(name, number)),
+                options = UpdateOptions().upsert(true)
+            ).run { modifiedCount >= 1 || upsertedId != null }
+    } catch (e: MongoWriteException) {
+        if (e.code == 11000)
+            return false
+        throw e
+    }
+}
 
 /**
  * Retrieves the guild block list from the database or creates a new one if it doesn't exist
@@ -113,4 +143,4 @@ fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.ge
 fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
     .updateOneById(id, *updates, options = UpdateOptions().upsert(true))
 
-fun Guild.preferredName(contactList: GuildContactList?) = contactList?.contacts?.firstOrNull { it.number == idLong }?.name ?: name
+fun Guild.getAsContact(contactList: GuildContactList?) = contactList?.contacts?.find { it.number == idLong }
