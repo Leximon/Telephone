@@ -23,32 +23,32 @@ class Audio(
         volume = 33
         addListener(eventHandler)
     }
-    private var shouldPlaySounds = false
-    private val handler = Handler().also {
+    private var playsSound = false
+    private val streamingHandler = StreamingHandler().also {
         audioManager.sendingHandler = it
         audioManager.receivingHandler = it
     }
 
     /**
-     * Disables the audio transfer of the call and plays a sound.
+     * Stops streaming the call and plays a sound.
      */
     fun playSound(sound: SoundType, repeat: Boolean = false) {
         val track = sound.getTrack(participant.guildSettings.soundPack) ?: return
         player.stopTrack()
         eventHandler.repeat = repeat
         player.playTrack(track)
-        shouldPlaySounds = true
+        playsSound = true
     }
 
     /**
-     * Enables the audio transfer of the call and stops playing sounds.
+     * Starts streaming the call and stops playing sounds.
      */
     fun stopSound() {
         player.stopTrack()
-        shouldPlaySounds = false
+        playsSound = false
     }
 
-    inner class Handler : AudioSendHandler, AudioReceiveHandler {
+    inner class StreamingHandler : AudioSendHandler, AudioReceiveHandler {
         val queue = ConcurrentLinkedQueue<ByteArray>()
         private val buffer = ByteBuffer.allocate(1024)
         private val frame = MutableAudioFrame().apply { setBuffer(buffer) }
@@ -57,21 +57,21 @@ class Audio(
         override fun canReceiveCombined() = queue.size < 10
 
         override fun handleCombinedAudio(combinedAudio: CombinedAudio) {
-            if (shouldPlaySounds || combinedAudio.users.isEmpty())
+            if (playsSound || combinedAudio.users.isEmpty())
                 return
             val data = combinedAudio.getAudioData(1.0)
-            participant.recipient?.audio?.handler?.queue?.add(data)
+            participant.recipient?.audio?.streamingHandler?.queue?.add(data)
         }
 
         // Sending
         override fun canProvide(): Boolean {
-            if (shouldPlaySounds)
+            if (playsSound)
                 return player.provide(frame)
             return !queue.isEmpty()
         }
 
         override fun provide20MsAudio(): ByteBuffer? {
-            if (shouldPlaySounds) {
+            if (playsSound) {
                 buffer.flip()
                 return buffer
             }
@@ -79,7 +79,7 @@ class Audio(
             return data?.let { ByteBuffer.wrap(it) }
         }
 
-        override fun isOpus() = shouldPlaySounds
+        override fun isOpus() = playsSound
 
     }
 

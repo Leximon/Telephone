@@ -45,5 +45,3 @@ class SoundType(file: String) {
         override fun loadFailed(exception: FriendlyException?) = LOGGER.error("Failed to load track '$path'!", exception)
     }
 }
-
-data class SoundInstance(val sound: SoundType, val repeat: Boolean)

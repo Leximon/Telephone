@@ -1,10 +1,10 @@
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.core.Contact
 import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.core.call.initializeCall
-import de.leximon.telephone.core.retrieveContactList
-import de.leximon.telephone.core.retrieveSettings
+import de.leximon.telephone.core.data.Contact
+import de.leximon.telephone.core.data.retrieveContactList
+import de.leximon.telephone.core.data.retrieveSettings
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.commands.option

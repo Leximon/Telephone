@@ -1,6 +1,8 @@
 package de.leximon.telephone.core.call
 
-import de.leximon.telephone.core.*
+import de.leximon.telephone.core.Sound
+import de.leximon.telephone.core.VoiceChannelJoinRule
+import de.leximon.telephone.core.data.*
 import dev.minn.jda.ktx.events.await
 import kotlinx.coroutines.*
 import net.dv8tion.jda.api.entities.Guild
@@ -36,6 +38,7 @@ class Participant(
 
     var userCount: Int? = null
     var startTimestamp: Instant? = null
+
     var autoHangupJob: Job? = null
 
     /**
@@ -102,15 +105,15 @@ class Participant(
             delay(30.seconds)
             stateManager.setState(CallFailedState(CallFailedState.Reason.OUTGOING_NO_RESPONSE))
             recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
-            closeBothSidesWithSound()
+            closeSides(sound = true)
         }
         withTimeoutOrNull(30.seconds) {
-            val pressed = jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_ID && guild.idLong == it.guild?.idLong }
-            autoHangupJob?.cancel()
+            val pressed =
+                jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_BUTTON && guild.idLong == it.guild?.idLong }
             pressed.deferEdit().queue()
             stateManager.setState(CallFailedState(CallFailedState.Reason.OUTGOING_NO_RESPONSE))
             recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
-            closeBothSidesWithSound()
+            closeSides(sound = true)
         }
     }
 
@@ -162,18 +165,37 @@ class Participant(
             audio = Audio(this, audioManager)
     }
 
+    fun cancelAllJobs() {
+        autoHangupJob?.cancel()
+    }
+
     /**
+     * Removes the participation object from the guild and closes the audio connection.
      * Disconnects from the audio channel and removes the participation object from the guild.
      */
     private fun close() {
+        cancelAllJobs()
         participants.remove(guild.idLong)
         guild.audioManager.closeAudioConnection()
     }
 
-    suspend fun closeBothSidesWithSound() {
-        audio?.playSound(Sound.HANGUP)
-        recipient?.audio?.playSound(Sound.HANGUP)
-        delay(5.seconds)
+    /**
+     * Closes both sides of the call and optionally plays the hangup sound before closing.
+     *
+     * All jobs will be cancelled before the sound plays.
+     * @param sound whether to play the hangup sound
+     * @see close
+     */
+    suspend fun closeSides(sound: Boolean = false) {
+        cancelAllJobs()
+        recipient?.cancelAllJobs()
+
+        if (sound) {
+            audio?.playSound(Sound.HANGUP)
+            recipient?.audio?.playSound(Sound.HANGUP)
+            delay(5.seconds)
+        }
+
         close()
         recipient?.close()
     }

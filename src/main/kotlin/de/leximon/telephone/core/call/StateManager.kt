@@ -1,6 +1,6 @@
 package de.leximon.telephone.core.call
 
-import de.leximon.telephone.listeners.ADD_CONTACT_ID
+import de.leximon.telephone.handlers.ADD_CONTACT_BUTTON
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.components.danger
@@ -104,7 +104,7 @@ class DialingFailedState(private val reason: Reason) : State {
  */
 class OutgoingCallState(private val automaticHangup: Duration?, private val disableComponents: Boolean = false) : State {
     companion object {
-        const val HANGUP_ID = "outgoing-hangup"
+        const val HANGUP_BUTTON = "outgoing-hangup"
     }
     override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
@@ -118,9 +118,9 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
             color = EMBED_COLOR_NONE
         }
         components += row(
-            danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP).withDisabled(disableComponents),
+            danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP).withDisabled(disableComponents),
             secondary(
-                ADD_CONTACT_ID,
+                ADD_CONTACT_BUTTON,
                 emoji = Emojis.ADD_CONTACT
             ).withDisabled(disableComponents || participant.recipientInfo.isFamiliar)
         )
@@ -129,8 +129,8 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
 
 class IncomingCallState(private val userCount: Int) : State {
     companion object {
-        const val HANGUP_ID = "incoming-hangup"
-        const val PICKUP_ID = "incoming-pickup"
+        const val HANGUP_BUTTON = "incoming-hangup"
+        const val PICKUP_BUTTON = "incoming-pickup"
     }
     override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
@@ -139,9 +139,9 @@ class IncomingCallState(private val userCount: Int) : State {
             color = EMBED_COLOR_NONE
         }
         components += row(
-            success(PICKUP_ID, tl("button.pickup"), emoji = Emojis.PICKUP),
-            danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP),
-            secondary(ADD_CONTACT_ID, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
+            success(PICKUP_BUTTON, tl("button.pickup"), emoji = Emojis.PICKUP),
+            danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP),
+            secondary(ADD_CONTACT_BUTTON, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
         )
     }
 }
@@ -200,7 +200,7 @@ class CallActiveState(
     private val startTimestamp: Instant = Instant.now()
 ) : State {
     companion object {
-        const val HANGUP_ID = "active-hangup"
+        const val HANGUP_BUTTON = "active-hangup"
     }
     override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
@@ -208,8 +208,11 @@ class CallActiveState(
             description = tl("embed.call.active.description", startTimestamp.asRelativeTimestamp())
             color = EMBED_COLOR_NONE
             components += row(
-                danger(HANGUP_ID, tl("button.hangup"), emoji = Emojis.HANGUP),
-                secondary(ADD_CONTACT_ID, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
+                danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP),
+                secondary(
+                    ADD_CONTACT_BUTTON,
+                    emoji = Emojis.ADD_CONTACT
+                ).withDisabled(participant.recipientInfo.isFamiliar)
             )
         }
     }

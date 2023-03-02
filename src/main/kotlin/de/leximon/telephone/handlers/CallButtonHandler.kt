@@ -1,7 +1,6 @@
-package de.leximon.telephone.listeners
+package de.leximon.telephone.handlers
 
 import de.leximon.telephone.commands.CONTACT_LIST_COMMAND_NAME
-import de.leximon.telephone.commands.replyContactModal
 import de.leximon.telephone.core.call.*
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
@@ -13,8 +12,6 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.sharding.ShardManager
 import kotlin.time.Duration.Companion.seconds
 
-const val ADD_CONTACT_ID = "add-contact"
-
 fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 30.seconds) { e ->
     handleExceptions(e) {
         val guild = e.guild
@@ -25,43 +22,43 @@ fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 3
         participant.run {
             when (e.componentId) {
                 // Hangup incoming call
-                IncomingCallState.HANGUP_ID -> recipient?.autoHangupJob?.also {
+                IncomingCallState.HANGUP_BUTTON -> recipient?.autoHangupJob?.also {
                     if (it.isCompleted)
                         return@run
                     it.cancel()
                     stateManager.setState(CallFailedState(CallFailedState.Reason.INCOMING_REJECTED), e.editByState())
-                recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.OUTGOING_REJECTED))
-                closeBothSidesWithSound()
-            }
-
-
-            // Pickup incoming call
-            IncomingCallState.PICKUP_ID -> {
-                val audioChannel = e.runCatching(GenericInteractionCreateEvent::getUsersAudioChannel).getOrElse {
-                    e.reply_(it.message!!, ephemeral = true).queue()
-                    return@listener
+                    recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.OUTGOING_REJECTED))
+                    closeSides(sound = true)
                 }
-                recipient?.autoHangupJob?.also {
-                    if (it.isCompleted)
-                        return@run
-                    it.cancel()
-                    e.disableComponents().queue()
-                    recipient?.stateManager?.setState(OutgoingCallState(null, disableComponents = true))
-                    startVoiceCall(audioChannel)
-                    stateManager.setState(CallActiveState(startTimestamp!!), e.editByState())
-                    recipient?.stateManager?.setState(CallActiveState(startTimestamp!!))
+
+
+                // Pickup incoming call
+                IncomingCallState.PICKUP_BUTTON -> {
+                    val audioChannel = e.runCatching(GenericInteractionCreateEvent::getUsersAudioChannel).getOrElse {
+                        e.reply_(it.message!!, ephemeral = true).queue()
+                        return@listener
+                    }
+                    recipient?.autoHangupJob?.also {
+                        if (it.isCompleted)
+                            return@run
+                        it.cancel()
+                        e.disableComponents().queue()
+                        recipient?.stateManager?.setState(OutgoingCallState(null, disableComponents = true))
+                        startVoiceCall(audioChannel)
+                        stateManager.setState(CallActiveState(startTimestamp!!), e.editByState())
+                        recipient?.stateManager?.setState(CallActiveState(startTimestamp!!))
+                    }
                 }
-            }
 
-            // Hangup active call
-            CallActiveState.HANGUP_ID -> {
-                stateManager.setState(CallSuccessState(outgoing, startTimestamp), e.editByState())
-                recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
-                closeBothSidesWithSound()
-            }
+                // Hangup active call
+                CallActiveState.HANGUP_BUTTON -> {
+                    stateManager.setState(CallSuccessState(outgoing, startTimestamp), e.editByState())
+                    recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
+                    closeSides(sound = true)
+                }
 
-            // Add contact
-                ADD_CONTACT_ID -> recipient?.let {
+                // Add contact
+                ADD_CONTACT_BUTTON -> recipient?.let {
                     val command = e.jda.getCommandByName(CONTACT_LIST_COMMAND_NAME)
                     val privileges = guild.retrieveCommandPrivileges().await()
                     val permitted =

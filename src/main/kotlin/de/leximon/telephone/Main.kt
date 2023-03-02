@@ -4,7 +4,8 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
 import de.leximon.telephone.core.Sound
-import de.leximon.telephone.listeners.buttonListener
+import de.leximon.telephone.handlers.buttonListener
+import de.leximon.telephone.handlers.contactListModalListener
 import de.leximon.telephone.util.*
 import de.leximon.telephone.util.audio.ResourceAudioSourceManager
 import dev.minn.jda.ktx.events.CoroutineEventManager
