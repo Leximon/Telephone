@@ -2,6 +2,7 @@ package de.leximon.telephone.core.call
 
 import de.leximon.telephone.LOGGER
 import de.leximon.telephone.handlers.ADD_CONTACT_BUTTON
+import de.leximon.telephone.handlers.BLOCK_BUTTON
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.interactions.components.danger
@@ -110,6 +111,7 @@ class DialingFailedState(private val reason: Reason) : State {
 
     enum class Reason(val title: String, val description: String? = null) {
         BLOCKED_BY_RECIPIENT("embed.call.blocked-by-recipient", "embed.call.blocked-by-recipient.description"),
+        BLOCKED_BY_CALLER("embed.call.blocked-by-caller", "embed.call.blocked-by-caller.description"),
         RECIPIENT_NOT_FOUND("embed.call.recipient-not-found", "embed.call.recipient-not-found.description"),
         RECIPIENT_ALREADY_IN_CALL("embed.call.recipient-already-in-call"),
         RECIPIENT_NO_TEXT_CHANNEL("embed.call.recipient-no-text-channel", "embed.call.recipient-no-text-channel.description")
@@ -158,7 +160,8 @@ class IncomingCallState(private val userCount: Int) : State {
         components += row(
             success(PICKUP_BUTTON, tl("button.pickup"), emoji = Emojis.PICKUP),
             danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP),
-            secondary(ADD_CONTACT_BUTTON, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar)
+            secondary(ADD_CONTACT_BUTTON, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar),
+            secondary(BLOCK_BUTTON, emoji = Emojis.BLOCK)
         )
     }
 }

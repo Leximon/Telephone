@@ -33,7 +33,6 @@ fun main(args: Array<String>) {
     when {
         args.contains("-debug-root") -> (LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger).level =
             Level.DEBUG
-
         args.contains("-debug") -> (LOGGER as ch.qos.logback.classic.Logger).level = Level.DEBUG
     }
 
@@ -49,7 +48,7 @@ fun main(args: Array<String>) {
         DiscordLocale.GERMAN,
         DiscordLocale.FRENCH
     )
-    runBlocking {
+    runBlocking<Unit> {
         shardManager = DefaultShardManagerBuilder.createLight(token).apply {
             setEventManagerProvider {
                 CoroutineEventManager(timeout = 1.minutes)
@@ -65,7 +64,8 @@ fun main(args: Array<String>) {
                 phoneNumberCommand(),
                 callCommand(),
                 settingsCommand(),
-                contactListCommand()
+                contactListCommand(),
+                blockListCommand()
             )
             buttonListener()
             contactListModalListener()

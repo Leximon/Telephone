@@ -1,5 +1,6 @@
 package de.leximon.telephone.handlers
 
+import de.leximon.telephone.core.data.Contact
 import de.leximon.telephone.core.data.addContact
 import de.leximon.telephone.core.data.editContact
 import de.leximon.telephone.core.data.retrieveContactList
@@ -8,12 +9,20 @@ import dev.minn.jda.ktx.events.listener
 import dev.minn.jda.ktx.interactions.components.InlineModal
 import dev.minn.jda.ktx.interactions.components.replyModal
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback
+import net.dv8tion.jda.api.interactions.commands.Command
 import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction
 import net.dv8tion.jda.api.sharding.ShardManager
 
 
 const val MAX_CONTACTS = 25
+const val ADD_CONTACT_BUTTON = "add-contact"
+
+fun autoCompleteContacts(e: CommandAutoCompleteInteractionEvent): List<Command.Choice> {
+    val contactList = e.guild!!.retrieveContactList().contacts
+    return contactList.map(Contact::asChoice).take(25)
+}
 
 fun IModalCallback.replyContactModal(
     name: String? = null,
@@ -81,5 +90,3 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
         }
     }
 }
-
-const val ADD_CONTACT_BUTTON = "add-contact"

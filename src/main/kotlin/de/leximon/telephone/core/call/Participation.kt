@@ -13,6 +13,8 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 
+val AUTOMATIC_HANGUP_DURATION = 30.seconds
+
 /**
  * A guild represented as participant of a call but the conversation may not be started yet or may even fail due to following reasons:
  * - the recipient does not exist
@@ -53,22 +55,20 @@ class Participant(
     suspend fun startDialing(
         contactList: GuildContactList,
         audioChannel: AudioChannel
-    ) = coroutineScope {
-        dialingJob = launch {
+    ) = coroutineScope { dialingJob = launch {
+        connectToAudioChannel(audioChannel)
+        userCount = audioChannel.members.size
+        delay(1.seconds) // wait for the audio connection to be established
+        audio?.playSound(Sound.DIALING)
+        delay(4.75.seconds)
 
-            connectToAudioChannel(audioChannel)
-            userCount = audioChannel.members.size
-            delay(1.seconds) // wait for the audio connection to be established
-            audio?.playSound(Sound.DIALING)
-            delay(4.75.seconds)
-
-            val recipientGuild = jda.getGuildById(recipientInfo.id)
-            if (recipientGuild == null) {
-                stateManager.setState(DialingFailedState(DialingFailedState.Reason.RECIPIENT_NOT_FOUND))
-                close()
-                return@launch
-            }
-            val recipientBlockList = recipientGuild.retrieveBlockList().blocked
+        val recipientGuild = jda.getGuildById(recipientInfo.id)
+        if (recipientGuild == null) {
+            stateManager.setState(DialingFailedState(DialingFailedState.Reason.RECIPIENT_NOT_FOUND))
+            close()
+            return@launch
+        }
+        val recipientBlockList = recipientGuild.retrieveBlockList().blocked
         val recipientSettings = recipientGuild.retrieveSettings()
         val recipientParticipation = recipientGuild.asParticipant()
         val recipientTextChannel = recipientSettings.callTextChannel?.let { recipientGuild.getTextChannelById(it) }
@@ -90,14 +90,13 @@ class Participant(
             return@launch
         }
 
-            startOutgoingRinging()
-        }
-    }
+        startOutgoingRinging()
+    } }
 
     /**
      * Starts ringing the recipient
      */
-    private suspend fun startOutgoingRinging() = coroutineScope {
+    private suspend fun startOutgoingRinging() = coroutineScope<Unit> {
         recipient = recipientInfo.guild!!.initializeCall(
             recipientInfo.settings!!,
             recipientInfo.messageChannel!!,
@@ -108,15 +107,14 @@ class Participant(
 
         autoHangupJob = launch {
             audio?.playSound(Sound.CALLING, true)
-            stateManager.setState(OutgoingCallState(30.seconds))
-            delay(30.seconds)
-            hangUp()
+            stateManager.setState(OutgoingCallState(AUTOMATIC_HANGUP_DURATION))
+            delay(AUTOMATIC_HANGUP_DURATION)
+            withContext(NonCancellable) { hangUp() }
         }
-        withTimeoutOrNull(30.seconds) {
-            val pressed =
-                jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_BUTTON && guild.idLong == it.guild?.idLong }
+        withTimeoutOrNull(AUTOMATIC_HANGUP_DURATION) {
+            val pressed = jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_BUTTON && guild.idLong == it.guild?.idLong }
             pressed.deferEdit().queue()
-            hangUp()
+            withContext(NonCancellable) { hangUp() }
         }
     }
 

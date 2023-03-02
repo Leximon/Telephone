@@ -9,6 +9,7 @@ import de.leximon.telephone.util.database
 import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.commands.Command
+import org.bson.Document
 import org.litote.kmongo.*
 
 @Serializable
@@ -25,18 +26,25 @@ data class Contact(
     fun asChoice() = Command.Choice(name, number.asPhoneNumber())
 }
 
+private val collection get() = database.getCollection<GuildContactList>("guildContactLists")
+
 /**
  * Retrieves the guild contact list from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveContactList() = database.getCollection<GuildContactList>("guildContactLists")
+fun Guild.retrieveContactList() = collection
     .findOneById(id) ?: GuildContactList(id)
+
+private data class ContactCount(val count: Int = 0)
+fun Guild.countContacts() = collection.aggregate<ContactCount>(
+        match(GuildContactList::_id eq id),
+        project(Document("count", Document("\$size", "\$contacts")))
+    ).firstOrNull()?.count ?: 0
 
 /**
  * Removes a contact from the guild contact list
  * @return null if the contact was not found, otherwise the removed contact
  */
-fun Guild.removeContact(number: Long) = database.getCollection<GuildContactList>("guildContactLists")
-    .findOneAndUpdate(
+fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
         GuildContactList::_id eq id,
         pullByFilter(GuildContactList::contacts, Contact::number eq number)
     )?.contacts?.find { c -> c.number == number }
@@ -47,7 +55,6 @@ fun Guild.removeContact(number: Long) = database.getCollection<GuildContactList>
  * @throws IllegalArgumentException if a contact with the new name already exists
  */
 fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? {
-    val collection = database.getCollection<GuildContactList>("guildContactLists")
     val alreadyExists = collection.find(
         and(
             GuildContactList::_id eq id,
@@ -77,15 +84,14 @@ fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? 
  */
 fun Guild.addContact(name: String, number: Long): Boolean {
     try {
-        return database.getCollection<GuildContactList>("guildContactLists")
-            .updateOne(
-                and(
-                    GuildContactList::_id eq id,
-                    GuildContactList::contacts / Contact::name ne name
-                ),
-                addToSet(GuildContactList::contacts, Contact(name, number)),
-                options = UpdateOptions().upsert(true)
-            ).run { modifiedCount >= 1 || upsertedId != null }
+        return collection.updateOne(
+            and(
+                GuildContactList::_id eq id,
+                GuildContactList::contacts / Contact::name ne name
+            ),
+            addToSet(GuildContactList::contacts, Contact(name, number)),
+            options = UpdateOptions().upsert(true)
+        ).run { modifiedCount >= 1 || upsertedId != null }
     } catch (e: MongoWriteException) {
         if (e.code == 11000)
             return false
