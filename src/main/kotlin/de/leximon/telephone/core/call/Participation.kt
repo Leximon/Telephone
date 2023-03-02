@@ -3,6 +3,7 @@ package de.leximon.telephone.core.call
 import de.leximon.telephone.core.Sound
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.core.data.*
+import de.leximon.telephone.util.editByState
 import dev.minn.jda.ktx.events.await
 import kotlinx.coroutines.*
 import net.dv8tion.jda.api.entities.Guild
@@ -28,6 +29,7 @@ class Participant(
 ) {
     val jda by guild::jda
     val stateManager = StateManager(this)
+    val state get() = stateManager.state
     var audio: Audio? = null
     /**
      * [recipient] will be initialized once the calling started, but we need the information sometimes earlier
@@ -36,9 +38,11 @@ class Participant(
     var recipientInfo: RecipientInfo = RecipientInfo(recipientId)
     var recipient: Participant? = null
 
+    var closing = false
     var userCount: Int? = null
     var startTimestamp: Instant? = null
 
+    var dialingJob: Job? = null
     var autoHangupJob: Job? = null
 
     /**
@@ -49,20 +53,22 @@ class Participant(
     suspend fun startDialing(
         contactList: GuildContactList,
         audioChannel: AudioChannel
-    ) {
-        connectToAudioChannel(audioChannel)
-        userCount = audioChannel.members.size
-        delay(1.seconds)
-        audio?.playSound(Sound.DIALING)
-        delay(4.75.seconds)
+    ) = coroutineScope {
+        dialingJob = launch {
 
-        val recipientGuild = jda.getGuildById(recipientInfo.id)
-        if (recipientGuild == null) {
-            stateManager.setState(DialingFailedState(DialingFailedState.Reason.RECIPIENT_NOT_FOUND))
-            close()
-            return
-        }
-        val recipientBlockList = recipientGuild.retrieveBlockList().blocked
+            connectToAudioChannel(audioChannel)
+            userCount = audioChannel.members.size
+            delay(1.seconds) // wait for the audio connection to be established
+            audio?.playSound(Sound.DIALING)
+            delay(4.75.seconds)
+
+            val recipientGuild = jda.getGuildById(recipientInfo.id)
+            if (recipientGuild == null) {
+                stateManager.setState(DialingFailedState(DialingFailedState.Reason.RECIPIENT_NOT_FOUND))
+                close()
+                return@launch
+            }
+            val recipientBlockList = recipientGuild.retrieveBlockList().blocked
         val recipientSettings = recipientGuild.retrieveSettings()
         val recipientParticipation = recipientGuild.asParticipant()
         val recipientTextChannel = recipientSettings.callTextChannel?.let { recipientGuild.getTextChannelById(it) }
@@ -81,10 +87,11 @@ class Participant(
         }?.let {
             stateManager.setState(DialingFailedState(it))
             close()
-            return@startDialing
+            return@launch
         }
 
-        startOutgoingRinging()
+            startOutgoingRinging()
+        }
     }
 
     /**
@@ -103,18 +110,39 @@ class Participant(
             audio?.playSound(Sound.CALLING, true)
             stateManager.setState(OutgoingCallState(30.seconds))
             delay(30.seconds)
-            stateManager.setState(CallFailedState(CallFailedState.Reason.OUTGOING_NO_RESPONSE))
-            recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
-            closeSides(sound = true)
+            hangUp()
         }
         withTimeoutOrNull(30.seconds) {
             val pressed =
                 jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_BUTTON && guild.idLong == it.guild?.idLong }
             pressed.deferEdit().queue()
-            stateManager.setState(CallFailedState(CallFailedState.Reason.OUTGOING_NO_RESPONSE))
-            recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
-            closeSides(sound = true)
+            hangUp()
         }
+    }
+
+    /**
+     * Hangs up the call with a sound and sets the state for both sides. The new state will be determined by the current state of the participant.
+     * @param updateHandler how and which message should be updated when changing states of this participant. See also [editByState]
+     */
+    suspend fun hangUp(updateHandler: (StateManager.(State) -> Unit)? = null) {
+        when (state) {
+            is CallActiveState -> {
+                stateManager.setState(CallSuccessState(outgoing, startTimestamp), updateHandler)
+                recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
+            }
+
+            is IncomingCallState -> {
+                stateManager.setState(CallFailedState(CallFailedState.Reason.INCOMING_REJECTED), updateHandler)
+                recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.OUTGOING_REJECTED))
+            }
+
+            is DialingState -> stateManager.deleteMessage() // usually only happens when the user disconnects the bot from the voice channel
+            else -> {
+                stateManager.setState(CallFailedState(CallFailedState.Reason.OUTGOING_NO_RESPONSE), updateHandler)
+                recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
+            }
+        }
+        closeSides(sound = true)
     }
 
     /**
@@ -144,6 +172,10 @@ class Participant(
     suspend fun startVoiceCall(channel: AudioChannel) {
         if (outgoing)
             throw IllegalStateException("Cannot start call on outgoing participant")
+        if (guild.audioManager.connectedChannel != channel) {
+            connectToAudioChannel(channel)
+            delay(1.seconds) // wait for the audio connection to be established
+        }
         audio?.playSound(Sound.PICKUP)
         recipient!!.audio?.playSound(Sound.PICKUP)
 
@@ -154,8 +186,6 @@ class Participant(
         }
         audio?.stopSound()
         recipient!!.audio?.stopSound()
-        if (guild.audioManager.connectedChannel != channel)
-            connectToAudioChannel(channel)
     }
 
     private fun connectToAudioChannel(channel: AudioChannel) {
@@ -166,6 +196,7 @@ class Participant(
     }
 
     fun cancelAllJobs() {
+        dialingJob?.cancel()
         autoHangupJob?.cancel()
     }
 
@@ -174,6 +205,7 @@ class Participant(
      * Disconnects from the audio channel and removes the participation object from the guild.
      */
     private fun close() {
+        closing = true
         cancelAllJobs()
         participants.remove(guild.idLong)
         guild.audioManager.closeAudioConnection()
@@ -187,6 +219,9 @@ class Participant(
      * @see close
      */
     suspend fun closeSides(sound: Boolean = false) {
+        if (closing) // to prevent it from playing the sound twice
+            return
+        closing = true
         cancelAllJobs()
         recipient?.cancelAllJobs()
 
@@ -275,13 +310,14 @@ suspend fun Guild.initializeCall(
     guildSettings: GuildSettings,
     messageChannel: GuildMessageChannel,
     recipient: Long,
+    initialState: State,
     outgoing: Boolean,
-    initialState: State = DialingState(),
     init: Participant.() -> Unit = {}
 ): Participant {
     val participant = Participant(this, guildSettings, messageChannel, recipient, outgoing)
     participant.init()
     participants[idLong] = participant
+
     participant.stateManager.apply {
         setState(initialState)
         sendInitialMessage()

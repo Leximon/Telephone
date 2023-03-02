@@ -1,5 +1,6 @@
 package de.leximon.telephone.core.call
 
+import de.leximon.telephone.LOGGER
 import de.leximon.telephone.handlers.ADD_CONTACT_BUTTON
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
@@ -14,13 +15,14 @@ import kotlin.time.Duration
 class StateManager(val participant: Participant) {
     val messageChannel by participant::messageChannel
     var messageId: Long? = null
-    var state: State = DialingState()
+    var state: State? = null
         private set
 
     /**
      * Sends the initial message to the message channel. Can only be called once.
      */
     suspend fun sendInitialMessage() {
+        val state = state ?: throw IllegalStateException("Cannot send initial message without state")
         if (messageId != null)
             throw IllegalStateException("Message already sent")
         val message = messageChannel.sendMessage(MessageCreateBuilder(
@@ -31,24 +33,34 @@ class StateManager(val participant: Participant) {
 
     /**
      * Sets the state of the call.
-     * @param updateHandler how and which message should be updated
+     * @param updateHandler how and which message should be updated. If null, the message by the [messageId] will be updated.
      */
     fun setState(
         state: State,
-        updateHandler: (StateManager.(State) -> Unit) = { if (messageId != null) updateMessage() }
+        updateHandler: (StateManager.(State) -> Unit)? = null
     ) {
         this.state = state
-        updateHandler(state)
+        if (updateHandler != null)
+            updateHandler(state)
+        else if (messageId != null)
+            updateMessage()
     }
 
     /**
      * Edits the message to reflect the current state.
      */
     private fun updateMessage() {
-        messageChannel.editMessageById(messageId!!, MessageEditBuilder(
-            replace = true,
-            builder = state.buildMessage(this)
-        ).build()).queue()
+        val state = state ?: throw IllegalStateException("Cannot update message without state")
+        messageChannel.editMessageById(
+            messageId!!, MessageEditBuilder(
+                replace = true,
+                builder = state.buildMessage(this)
+            ).build()
+        ).queue(null) { LOGGER.debug("Failed to update message by id $messageId", it) }
+    }
+
+    fun deleteMessage() {
+        messageId?.let { messageChannel.deleteMessageById(it).queue() }
     }
 
     /**
@@ -58,7 +70,12 @@ class StateManager(val participant: Participant) {
         val recipient = participant.recipientInfo
         embeds += EmbedBuilder(description = null)
             .apply(builder).apply {
-                description = "${if (description == null) "" else "$description\n\n"} ${tl("embed.call.tel", recipient.id.asPhoneNumber())}"
+                description = "${if (description == null) "" else "$description\n\n"} ${
+                    tl(
+                        "embed.call.tel",
+                        recipient.id.asPhoneNumber()
+                    )
+                }"
                 recipient.name?.let {
                     footer(it, recipient.iconUrl)
                 }

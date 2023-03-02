@@ -12,9 +12,9 @@ import dev.minn.jda.ktx.interactions.commands.subcommand
 import dev.minn.jda.ktx.interactions.components.getOption
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 
-const val CONTACT_LIST_COMMAND_NAME = "contact-list"
+const val CONTACT_LIST_COMMAND = "contact-list"
 
-fun contactListCommand() = slashCommand(CONTACT_LIST_COMMAND_NAME, "Add/Edit/Remove contacts") {
+fun contactListCommand() = slashCommand(CONTACT_LIST_COMMAND, "Add/Edit/Remove contacts") {
     restrict(guild = true, DefaultMemberPermissions.DISABLED)
     subcommand("add", "Add a contact")
     subcommand("edit", "Edit a contact") {

@@ -1,7 +1,10 @@
 package de.leximon.telephone.handlers
 
-import de.leximon.telephone.commands.CONTACT_LIST_COMMAND_NAME
-import de.leximon.telephone.core.call.*
+import de.leximon.telephone.commands.CONTACT_LIST_COMMAND
+import de.leximon.telephone.core.call.CallActiveState
+import de.leximon.telephone.core.call.IncomingCallState
+import de.leximon.telephone.core.call.OutgoingCallState
+import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.listener
@@ -16,8 +19,7 @@ fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 3
     handleExceptions(e) {
         val guild = e.guild
         val participant = guild?.asParticipant()
-            ?.takeIf { it.guild.idLong == guild.idLong && it.stateManager.messageId == e.messageIdLong }
-            ?: return@listener
+            ?.takeIf { it.stateManager.messageId == e.messageIdLong } ?: return@listener
 
         participant.run {
             when (e.componentId) {
@@ -26,9 +28,7 @@ fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 3
                     if (it.isCompleted)
                         return@run
                     it.cancel()
-                    stateManager.setState(CallFailedState(CallFailedState.Reason.INCOMING_REJECTED), e.editByState())
-                    recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.OUTGOING_REJECTED))
-                    closeSides(sound = true)
+                    hangUp(e.editByState())
                 }
 
 
@@ -51,20 +51,16 @@ fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 3
                 }
 
                 // Hangup active call
-                CallActiveState.HANGUP_BUTTON -> {
-                    stateManager.setState(CallSuccessState(outgoing, startTimestamp), e.editByState())
-                    recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
-                    closeSides(sound = true)
-                }
+                CallActiveState.HANGUP_BUTTON -> hangUp(e.editByState())
 
                 // Add contact
                 ADD_CONTACT_BUTTON -> recipient?.let {
-                    val command = e.jda.getCommandByName(CONTACT_LIST_COMMAND_NAME)
+                    val command = e.jda.getCommandByName(CONTACT_LIST_COMMAND)
                     val privileges = guild.retrieveCommandPrivileges().await()
                     val permitted =
                         privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
                     if (!permitted)
-                        throw e.error("response.error.not-permitted-by-command.button", "/$CONTACT_LIST_COMMAND_NAME")
+                        throw e.error("response.error.not-permitted-by-command.button", "/$CONTACT_LIST_COMMAND")
                     e.replyContactModal(it.guild.name, it.guild.idLong).queue()
                 }
             }

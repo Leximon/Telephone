@@ -1,5 +1,6 @@
 package de.leximon.telephone.commands
 
+import de.leximon.telephone.core.call.DialingState
 import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.core.call.initializeCall
 import de.leximon.telephone.core.data.Contact
@@ -14,9 +15,9 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
 import kotlin.time.Duration.Companion.minutes
 
-const val CALL_COMMAND_NAME = "call"
+const val CALL_COMMAND = "call"
 
-fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord server") {
+fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord server") {
     restrict(guild = true)
     option<String>(
         "number",
@@ -25,7 +26,7 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
         autocomplete = true
     )
 
-    onInteract(timeout = 2.minutes) {e ->
+    onInteract(timeout = 2.minutes) { e ->
         val guild = e.guild!!
         if (!e.channel.canTalk())
             throw e.error("response.error.no-access.text-channel", e.channel.asMention)
@@ -42,7 +43,7 @@ fun callCommand() = slashCommand(CALL_COMMAND_NAME, "Starts a call to a discord 
         val settings = guild.retrieveSettings()
         e.hook.deleteOriginal().await()
 
-        val participant = guild.initializeCall(settings, messageChannel, recipient, outgoing = true)
+        val participant = guild.initializeCall(settings, messageChannel, recipient, DialingState(), outgoing = true)
         participant.startDialing(contactList, audioChannel)
     }
     onAutoComplete { e ->

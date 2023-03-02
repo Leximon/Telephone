@@ -1,11 +1,13 @@
 package de.leximon.telephone
 
+import ch.qos.logback.classic.Level
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
 import de.leximon.telephone.core.Sound
 import de.leximon.telephone.handlers.buttonListener
 import de.leximon.telephone.handlers.contactListModalListener
+import de.leximon.telephone.handlers.interruptionListeners
 import de.leximon.telephone.util.*
 import de.leximon.telephone.util.audio.ResourceAudioSourceManager
 import dev.minn.jda.ktx.events.CoroutineEventManager
@@ -28,6 +30,13 @@ val LOGGER = LoggerFactory.getLogger("Telephone") as Logger
 lateinit var shardManager: ShardManager
 
 fun main(args: Array<String>) {
+    when {
+        args.contains("-debug-root") -> (LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger).level =
+            Level.DEBUG
+
+        args.contains("-debug") -> (LOGGER as ch.qos.logback.classic.Logger).level = Level.DEBUG
+    }
+
     LOGGER.info("Starting Telephone...")
     val token = getEnv("TOKEN");
     val databaseConnectionString = getEnv("DB_CONNECTION_STRING")
@@ -41,24 +50,27 @@ fun main(args: Array<String>) {
         DiscordLocale.FRENCH
     )
     runBlocking {
-        shardManager = DefaultShardManagerBuilder.createLight(token)
-            .setEventManagerProvider {
+        shardManager = DefaultShardManagerBuilder.createLight(token).apply {
+            setEventManagerProvider {
                 CoroutineEventManager(timeout = 1.minutes)
             }
-            .enableIntents(GatewayIntent.GUILD_VOICE_STATES)
-            .enableCache(CacheFlag.VOICE_STATE)
-            .setMemberCachePolicy(MemberCachePolicy.VOICE)
-            .build()
+            enableIntents(GatewayIntent.GUILD_VOICE_STATES)
+            enableCache(CacheFlag.VOICE_STATE)
+            setMemberCachePolicy(MemberCachePolicy.VOICE)
+        }.build()
 
-        shardManager.initCommands(
-            helpCommand(),
-            phoneNumberCommand(),
-            callCommand(),
-            settingsCommand(),
-            contactListCommand()
-        )
-        shardManager.buttonListener()
-        shardManager.contactListModalListener()
+        shardManager.apply {
+            initCommands(
+                helpCommand(),
+                phoneNumberCommand(),
+                callCommand(),
+                settingsCommand(),
+                contactListCommand()
+            )
+            buttonListener()
+            contactListModalListener()
+            interruptionListeners()
+        }
     }
 
 }
@@ -75,11 +87,11 @@ fun initAudio() {
 const val PRIVACY_URL = "https://bot-telephone.com/privacy"
 const val TERMS_URL = "https://bot-telephone.com/terms"
 
-suspend fun createSummaryEmbed(locale: DiscordLocale, jda: JDA, byCommand: Boolean = false): MessageEmbed {
+fun createSummaryEmbed(locale: DiscordLocale, jda: JDA, byCommand: Boolean = false): MessageEmbed {
     // build the description
     val summary = tl(
         locale, "summary.description",
-        jda.getCommandByName(CALL_COMMAND_NAME).asMention,
+        jda.getCommandByName(CALL_COMMAND).asMention,
         "/call", "/phone-number", "/contact-list", "/block-list", "/settings"
     )
     val desc = "$summary\n\n" +
