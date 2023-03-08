@@ -17,23 +17,23 @@ data class GuildSettings(
     /**
      * The text channel where the incoming calls are displayed
      */
-    val callTextChannel: String? = null,
+    var callTextChannel: String? = null,
     /**
      * The voice channel where the bot joins when a call is incoming
      */
-    val callVoiceChannel: String? = null,
+    var callVoiceChannel: String? = null,
     /**
      * Whether the bot should automatically join the voice channel when a call is incoming
      */
-    val voiceChannelJoinRule: VoiceChannelJoinRule = VoiceChannelJoinRule.MOST_USERS,
+    var voiceChannelJoinRule: VoiceChannelJoinRule = VoiceChannelJoinRule.MOST_USERS,
     /**
      * True if the bot should not transmit audio from other bots
      */
-    val muteBots: Boolean = false,
+    var muteBots: Boolean = false,
     /**
      * The sounds used for calls
      */
-    val soundPack: SoundPack = SoundPack.CLASSIC
+    var soundPack: SoundPack = SoundPack.CLASSIC
 )
 
 /**

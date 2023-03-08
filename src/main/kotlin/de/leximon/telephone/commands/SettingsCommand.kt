@@ -2,9 +2,12 @@ package de.leximon.telephone.commands
 
 import de.leximon.telephone.core.SoundPack
 import de.leximon.telephone.core.VoiceChannelJoinRule
+import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.core.data.GuildSettings
 import de.leximon.telephone.core.data.retrieveAndUpdateGuildSettings
 import de.leximon.telephone.core.data.updateGuildSettings
+import de.leximon.telephone.handlers.isQuickSetupRunning
+import de.leximon.telephone.handlers.startQuickSetup
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.restrict
@@ -15,13 +18,16 @@ import net.dv8tion.jda.api.entities.channel.Channel
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions
 import net.dv8tion.jda.api.interactions.components.selections.EntitySelectMenu.SelectTarget
 import org.litote.kmongo.setTo
 import kotlin.time.Duration.Companion.minutes
 
-fun settingsCommand() = slashCommand("settings", "Configurations for the telephone bot") {
+const val SETTINGS_COMMAND = "settings"
+
+fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the telephone bot") {
     restrict(guild = true, DefaultMemberPermissions.DISABLED)
     subcommand("incoming-call-text-channel", "Sets the text channel for incoming calls") {
         option<Channel>(
@@ -42,6 +48,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
     subcommand("sound-pack", "Sets the sounds used for calls (Default: Classic)") {
         enumOption<SoundPack>("pack", "The sound pack", required = true)
     }
+    subcommand("quick-setup", "Starts a quick setup to simplify the configuration of this bot")
 
 
     // events
@@ -75,24 +82,24 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
             return@onInteract
         }
 
-        e.hook.successWithOptions(
+        e.successWithFurtherInteraction(
             "response.command.settings.incoming-call-voice-channel", channel.asMention,
             emoji = Emojis.SETTINGS
         ) {
-            text("response.command.settings.incoming-call-voice-channel.set-join-rule")
+            message = guild.tl("response.command.settings.incoming-call-voice-channel.set-join-rule")
             components += row(
-                primary("set-join-rule-selected-channel", "Set join rule to \"Selected channel\""),
-                secondary("ignore", "Ignore")
+                primary("set-join-rule-selected-channel", guild.tl("button.set-join-rule-selected-channel")),
+                secondary("ignore", guild.tl("button.ignore"))
             )
-            awaitInteraction { interaction ->
+            listener { interaction ->
                 if (interaction.componentId != "set-join-rule-selected-channel")
-                    return@awaitInteraction true // ignore button has been pressed
+                    return@listener true // ignore button has been pressed
                 guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo VoiceChannelJoinRule.SELECTED_CHANNEL)
                 interaction.reply(
                     interaction.tl("response.command.settings.voice-channel-join-rule", VoiceChannelJoinRule.SELECTED_CHANNEL.tl(guild))
                         .withEmoji(Emojis.SETTINGS)
                 ).queue()
-                return@awaitInteraction true
+                return@listener true
             }
         }
     }
@@ -111,31 +118,31 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
             return@onInteract
         }
 
-        e.hook.successWithOptions(
+        e.successWithFurtherInteraction(
             "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
             emoji = Emojis.SETTINGS
         ) {
-            text("response.command.settings.voice-channel-join-rule.set-voice-channel")
+            message = guild.tl("response.command.settings.voice-channel-join-rule.set-voice-channel")
             components += listOf(
                 row(EntitySelectMenu(
                     "set-incoming-call-voice-channel",
                     listOf(SelectTarget.CHANNEL),
-                    placeholder = "Set incoming call voice channel"
+                    placeholder = guild.tl("select-menu.set-incoming-call-voice-channel.placeholder")
                 ) {
                     setChannelTypes(ChannelType.VOICE)
                 }),
-                row(secondary("ignore", "Ignore"))
+                row(secondary("ignore", guild.tl("button.ignore")))
             )
-            awaitInteraction { interaction ->
+            listener { interaction ->
                 if (interaction !is EntitySelectInteractionEvent)
-                    return@awaitInteraction true // ignore button has been pressed
+                    return@listener true // ignore button has been pressed
                 val selectedChannel = interaction.values.first() as VoiceChannel
                 if (!guild.selfMember.hasAccess(selectedChannel)) {
                     interaction.reply_(
                         interaction.tl("response.error.no-access.voice-channel", selectedChannel.asMention).withEmoji(Emojis.ERROR),
                         ephemeral = true
                     ).queue()
-                    return@awaitInteraction false
+                    return@listener false
                 }
 
                 guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo selectedChannel.id)
@@ -143,7 +150,7 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
                     interaction.tl("response.command.settings.incoming-call-voice-channel", selectedChannel.asMention)
                         .withEmoji(Emojis.SETTINGS)
                 ).queue()
-                return@awaitInteraction true
+                return@listener true
             }
         }
     }
@@ -154,20 +161,34 @@ fun settingsCommand() = slashCommand("settings", "Configurations for the telepho
         e.deferReply().queue()
 
         guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
+        guild.asParticipant()?.guildSettings?.muteBots = enabled
         e.hook.success(
             "response.command.settings.mute-bots.${enabled.tlKey()}",
             emoji = Emojis.SETTINGS
         ).queue()
     }
 
-    onInteract("sound-pack", timeout = 1.minutes) {
-        val guild = it.guild!!
-        val pack = it.getEnumOption<SoundPack>("pack")!!
-        it.deferReply().queue()
+    onInteract("sound-pack", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val pack = e.getEnumOption<SoundPack>("pack")!!
+        e.deferReply().queue()
         guild.updateGuildSettings(GuildSettings::soundPack setTo pack)
-        it.hook.success(
+        guild.asParticipant()?.guildSettings?.soundPack = pack
+        e.hook.success(
             "response.command.settings.sound-pack", pack.tl(guild),
             emoji = Emojis.SETTINGS
         ).queue()
+    }
+
+    onInteract("quick-setup") { e ->
+        val channel = e.channel as GuildMessageChannel
+        if (!channel.canTalk())
+            throw e.error("response.error.no-access.text-channel", channel.asMention)
+        if (isQuickSetupRunning(e.guild!!))
+            throw e.error("quick-setup.already-running")
+        e.success("quick-setup.started")
+            .setEphemeral(true)
+            .queue()
+        startQuickSetup(e.channel as GuildMessageChannel, e.member!!)
     }
 }

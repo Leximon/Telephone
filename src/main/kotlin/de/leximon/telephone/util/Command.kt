@@ -8,10 +8,7 @@ import dev.minn.jda.ktx.events.CoroutineEventListener
 import dev.minn.jda.ktx.events.await
 import dev.minn.jda.ktx.events.listener
 import dev.minn.jda.ktx.interactions.commands.Option
-import dev.minn.jda.ktx.messages.EmbedBuilder
-import dev.minn.jda.ktx.messages.MessageEdit
-import dev.minn.jda.ktx.messages.editMessage
-import dev.minn.jda.ktx.messages.editMessage_
+import dev.minn.jda.ktx.messages.*
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.Permission
@@ -20,8 +17,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.entities.emoji.Emoji
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
-import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent
-import net.dv8tion.jda.api.interactions.Interaction
 import net.dv8tion.jda.api.interactions.InteractionHook
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
 import net.dv8tion.jda.api.interactions.commands.Command
@@ -32,8 +27,6 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 import net.dv8tion.jda.api.interactions.commands.privileges.IntegrationPrivilege
-import net.dv8tion.jda.api.interactions.components.ActionComponent
-import net.dv8tion.jda.api.interactions.components.LayoutComponent
 import net.dv8tion.jda.api.sharding.ShardManager
 import okhttp3.internal.toImmutableMap
 import kotlin.time.Duration
@@ -127,63 +120,31 @@ fun InteractionHook.success(
 ) = editOriginal((emoji?.forPrefix() ?: "") + interaction.tl(key, *args))
 
 /**
- * Sends a message with additional components as option for the user. This method doesn't return anything meaning it doesn't need to be queued manually.
+ * Replies or edits the original message with additional components as option for the user.
+ *
+ * The message of the [interactionBuilder] will be appended to the main message.
  */
-suspend fun InteractionHook.successWithOptions(
-    key: String, vararg args: Any,
-    emoji: Emoji? = null, optionBuilder: MessageOptions.() -> Unit
+suspend fun IReplyCallback.successWithFurtherInteraction(
+    key: String, vararg args: Any, emoji: Emoji? = null,
+    timeout: Duration = 30.seconds, interactionBuilder: InlineInteractiveMessage.() -> Unit
 ) {
-    val options = MessageOptions(interaction).apply(optionBuilder)
-    val message = (emoji?.forPrefix() ?: "") + interaction.tl(key, *args);
-    val messageWithOptionText = message + (options.text?.let { "\n\n$it" } ?: "")
-    editOriginal(MessageEdit {
-        content = messageWithOptionText
-        components += options.components
-    }).queue()
+    val text = tl(key, *args).withEmoji(emoji)
+    val interactiveMessage = InlineInteractiveMessage { if (it == null) text else "$text\n\n$it" }
+        .apply {
+            filter = requiresUser(user, guild)
+        }.apply(interactionBuilder)
 
-    withTimeoutOrNull(options.awaitTimeout) {
+    replyOrEdit(interactiveMessage.builder()).queue()
+
+    withTimeoutOrNull(timeout) {
         while (true) {
-            val event = jda.await<GenericComponentInteractionCreateEvent> { e ->
-                // only consume the event if the component id is correct, and it's performed by the same user
-                // if someone else clicks any component, respond with an error message
-                options.components.flatten().forEach {
-                    if (it is ActionComponent && it.id == e.componentId) {
-                        if (interaction.user.idLong == e.user.idLong)
-                            return@await true
-
-                        e.reply(
-                            e.tl("response.error.not-allowed-to-interact").withEmoji(Emojis.NOT_PERMITTED)
-                        ).setEphemeral(true).queue()
-                        return@await false
-                    }
-                }
-                return@await false
-            }
-
-            if (!options.awaitHandler(event))
-                continue // if the handler returns false, continue waiting for the next event
-            if (event.isAcknowledged)
-                editMessage(content = message, components = emptyList()).queue()
-            else event.editMessage_(content = message, components = emptyList()).queue()
+            val event = jda.await(interactiveMessage::canInteract)
+            if (!interactiveMessage.interact(event))
+                continue
+            hook.editMessage(content = text, components = emptyList()).queue()
             break
         }
-    } ?: editMessage(content = message, components = emptyList()).queue()
-}
-
-class MessageOptions(private val interaction: Interaction) {
-    internal var text: String? = null
-    var components = mutableListOf<LayoutComponent>()
-    internal var awaitTimeout = 30.seconds
-    internal var awaitHandler: (GenericComponentInteractionCreateEvent) -> Boolean = { true }
-
-    fun text(key: String, vararg args: Any, user: Boolean = false) {
-        text = interaction.tl(key, *args, user)
-    }
-
-    fun awaitInteraction(timeout: Duration = 30.seconds, handler: (GenericComponentInteractionCreateEvent) -> Boolean) {
-        awaitTimeout = timeout
-        awaitHandler = handler
-    }
+    } ?: hook.editMessage(content = text, components = emptyList()).queue()
 }
 
 

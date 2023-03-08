@@ -2,7 +2,11 @@ package de.leximon.telephone.util
 
 import de.leximon.telephone.core.call.State
 import de.leximon.telephone.core.call.StateManager
+import dev.minn.jda.ktx.interactions.components.StringSelectMenu
 import dev.minn.jda.ktx.interactions.components.row
+import dev.minn.jda.ktx.messages.InlineMessage
+import dev.minn.jda.ktx.messages.MessageCreate
+import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.MessageEditBuilder
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
@@ -13,6 +17,10 @@ import net.dv8tion.jda.api.interactions.callbacks.IMessageEditCallback
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
 import net.dv8tion.jda.api.interactions.components.ActionComponent
 import net.dv8tion.jda.api.interactions.components.LayoutComponent
+import net.dv8tion.jda.api.interactions.components.selections.SelectMenuInteraction
+import net.dv8tion.jda.api.interactions.components.selections.SelectOption
+import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu
+import net.dv8tion.jda.api.requests.FluentRestAction
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction
 import java.time.Instant
 import java.util.*
@@ -45,7 +53,9 @@ fun Boolean.tlKey() = if (this) "on" else "off"
 /**
  * Prefixes the string with the unicode emoji
  */
-fun String.withEmoji(emoji: Emoji): String {
+fun String.withEmoji(emoji: Emoji?): String {
+    if (emoji == null)
+        return this
     return emoji.forPrefix() + this
 }
 
@@ -109,3 +119,34 @@ fun Duration.asTimeString(): String {
 }
 
 operator fun Instant.minus(other: Instant) = (toEpochMilli() - other.toEpochMilli()).milliseconds
+
+fun IReplyCallback.replyOrEdit(builder: InlineMessage<*>.() -> Unit): FluentRestAction<out Any, *> {
+    return if (isAcknowledged)
+        hook.editOriginal(MessageEdit(builder = builder))
+    else
+        reply(MessageCreate(builder = builder))
+}
+
+inline fun <reified E : Enum<E>> EnumSelectMenu(
+    customId: String,
+    placeholder: String? = null,
+    valueRange: IntRange = 1..1,
+    disabled: Boolean = false,
+    labelMapper: (E) -> String = { it.name },
+    builder: StringSelectMenu.Builder.() -> Unit = {}
+): StringSelectMenu {
+    val constants = E::class.java.enumConstants
+    return StringSelectMenu(
+        customId,
+        placeholder,
+        valueRange,
+        disabled,
+        constants.map { SelectOption.of(labelMapper(it), it.name) },
+        builder
+    )
+}
+
+inline fun <reified E : Enum<E>> SelectMenuInteraction<String, StringSelectMenu>.enumValues(): List<E> {
+    val constants = E::class.java.enumConstants
+    return values.map { constants.first { e -> e.name == it } }
+}

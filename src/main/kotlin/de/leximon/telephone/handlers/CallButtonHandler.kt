@@ -20,7 +20,7 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.sharding.ShardManager
 import kotlin.time.Duration.Companion.seconds
 
-fun ShardManager.buttonListener() = listener<ButtonInteractionEvent>(timeout = 60.seconds) { e -> handleExceptions(e) {
+fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout = 60.seconds) { e -> handleExceptions(e) {
     val guild = e.guild
     val participant = guild?.asParticipant()
         ?.takeIf { it.stateManager.messageId == e.messageIdLong } ?: return@listener

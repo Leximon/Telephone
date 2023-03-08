@@ -5,16 +5,20 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
 import de.leximon.telephone.core.Sound
-import de.leximon.telephone.handlers.buttonListener
-import de.leximon.telephone.handlers.contactListModalListener
-import de.leximon.telephone.handlers.interruptionListeners
+import de.leximon.telephone.handlers.*
 import de.leximon.telephone.util.*
 import de.leximon.telephone.util.audio.ResourceAudioSourceManager
 import dev.minn.jda.ktx.events.CoroutineEventManager
+import dev.minn.jda.ktx.events.listener
+import dev.minn.jda.ktx.interactions.components.primary
 import dev.minn.jda.ktx.messages.EmbedBuilder
+import dev.minn.jda.ktx.messages.into
+import dev.minn.jda.ktx.messages.send
 import kotlinx.coroutines.runBlocking
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.entities.MessageEmbed
+import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.interactions.DiscordLocale
 import net.dv8tion.jda.api.requests.GatewayIntent
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder
@@ -67,9 +71,19 @@ fun main(args: Array<String>) {
                 contactListCommand(),
                 blockListCommand()
             )
-            buttonListener()
+            callButtonListener()
+            quickSetupListener()
             contactListModalListener()
             interruptionListeners()
+
+            listener<GuildJoinEvent> { e ->
+                val channel = e.guild.defaultChannel
+                if (channel is StandardGuildMessageChannel && channel.canTalk())
+                    channel.send(
+                        embeds = listOf(createSummaryEmbed(e.guild.locale, e.jda)),
+                        components = primary(QUICK_SETUP_BUTTON, tl(e.guild.locale, "button.quick-setup"), emoji = Emojis.SETTINGS).into()
+                    ).queue()
+            }
         }
     }
 
@@ -94,9 +108,12 @@ fun createSummaryEmbed(locale: DiscordLocale, jda: JDA, byCommand: Boolean = fal
         jda.getCommandByName(CALL_COMMAND).asMention,
         "/call", "/phone-number", "/contact-list", "/block-list", "/settings"
     )
-    val desc = "$summary\n\n" +
-            "[${tl(locale, "summary.privacy")}]($PRIVACY_URL) | " +
-            "[${tl(locale, "summary.terms-of-service")}]($TERMS_URL)"
+    val desc = StringBuilder("$summary\n\n").apply {
+        if (!byCommand)
+            append("${tl(locale, "summary.quick-setup")}\n\n")
+        append("[${tl(locale, "summary.privacy")}]($PRIVACY_URL) | ")
+        append("[${tl(locale, "summary.terms-of-service")}]($TERMS_URL)")
+    }.toString()
 
     // build the embed message
     return EmbedBuilder {

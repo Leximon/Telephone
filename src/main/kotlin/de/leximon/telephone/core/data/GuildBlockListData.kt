@@ -13,8 +13,7 @@ import org.litote.kmongo.*
 data class GuildBlockList(
     val _id: String,
     val blocked: List<Long> = emptyList()
-) {
-}
+)
 
 private val collection get() = database.getCollection<GuildBlockList>("guildBlockLists")
 

@@ -152,9 +152,8 @@ class Participant(
                 .map { it.channel }
                 .filter { it != null && guild.selfMember.hasAccess(it) }
                 .maxByOrNull { it!!.members.size }
-            VoiceChannelJoinRule.SELECTED_CHANNEL ->
-                guildSettings.callVoiceChannel
-                    ?.let { guild.getVoiceChannelById(guildSettings.callVoiceChannel) }
+            VoiceChannelJoinRule.SELECTED_CHANNEL -> guildSettings.callVoiceChannel
+                    ?.let { guild.getVoiceChannelById(it) }
                     .takeIf { it != null && guild.selfMember.hasAccess(it) }
             else -> null
         }?.also {

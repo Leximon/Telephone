@@ -13,7 +13,7 @@ enum class SoundPack(private val defaultName: String) {
     MY_UNCLE("Discord: My Uncle");
 
     val directory = name.lowercase(Locale.ROOT)
-    val translationKey = "response.command.settings.sound-pack.${name.lowercase(Locale.ROOT).replace(" ", "-")}"
+    val translationKey = "response.command.settings.sound-pack.${name.lowercase(Locale.ROOT).replace("_", "-")}"
 
     override fun toString() = defaultName
 
