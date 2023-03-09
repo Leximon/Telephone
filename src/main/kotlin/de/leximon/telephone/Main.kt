@@ -17,7 +17,6 @@ import dev.minn.jda.ktx.messages.send
 import kotlinx.coroutines.runBlocking
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.entities.MessageEmbed
-import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.interactions.DiscordLocale
 import net.dv8tion.jda.api.requests.GatewayIntent
@@ -77,12 +76,11 @@ fun main(args: Array<String>) {
             interruptionListeners()
 
             listener<GuildJoinEvent> { e ->
-                val channel = e.guild.defaultChannel
-                if (channel is StandardGuildMessageChannel && channel.canTalk())
-                    channel.send(
-                        embeds = listOf(createSummaryEmbed(e.guild.locale, e.jda)),
-                        components = primary(QUICK_SETUP_BUTTON, tl(e.guild.locale, "button.quick-setup"), emoji = Emojis.SETTINGS).into()
-                    ).queue()
+                val channel = e.guild.firstPermittedTextChannel ?: return@listener
+                channel.send(
+                    embeds = listOf(createSummaryEmbed(e.guild.locale, e.jda)),
+                    components = primary(QUICK_SETUP_BUTTON, tl(e.guild.locale, "button.quick-setup"), emoji = Emojis.SETTINGS).into()
+                ).queue()
             }
         }
     }

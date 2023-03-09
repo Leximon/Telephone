@@ -8,6 +8,7 @@ import dev.minn.jda.ktx.messages.InlineMessage
 import dev.minn.jda.ktx.messages.MessageCreate
 import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.MessageEditBuilder
+import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
 import net.dv8tion.jda.api.entities.emoji.Emoji
@@ -150,3 +151,6 @@ inline fun <reified E : Enum<E>> SelectMenuInteraction<String, StringSelectMenu>
     val constants = E::class.java.enumConstants
     return values.map { constants.first { e -> e.name == it } }
 }
+
+val Guild.firstPermittedTextChannel
+    get() = textChannels.firstOrNull { it.canTalk() }
