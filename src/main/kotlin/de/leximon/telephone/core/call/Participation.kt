@@ -24,7 +24,6 @@ val AUTOMATIC_HANGUP_DURATION = 30.seconds
  */
 class Participant(
     val guild: Guild,
-    val guildSettings: GuildSettings,
     val messageChannel: GuildMessageChannel,
     recipientId: Long,
     val outgoing: Boolean
@@ -53,7 +52,6 @@ class Participant(
      * @param audioChannel the audio channel to connect to
      */
     suspend fun startDialing(
-        contactList: GuildContactList,
         audioChannel: AudioChannel
     ) = coroutineScope { dialingJob = launch {
         connectToAudioChannel(audioChannel)
@@ -68,15 +66,13 @@ class Participant(
             close()
             return@launch
         }
-        val recipientBlockList = recipientGuild.retrieveBlockList().blocked
-        val recipientSettings = recipientGuild.retrieveSettings()
+        val recipientData = recipientGuild.data()
         val recipientParticipation = recipientGuild.asParticipant()
-        val recipientTextChannel = recipientSettings.callTextChannel?.let { recipientGuild.getTextChannelById(it) }
-        // set the recipient info so that the next time the state changed the guild name is shown
-        recipientInfo.set(contactList, recipientGuild, recipientSettings, recipientTextChannel)
+        val recipientTextChannel = recipientData.callTextChannel?.let { recipientGuild.getTextChannelById(it) }
+        recipientInfo.set(recipientGuild, recipientTextChannel) // set the recipient info so that the next time the state changed the guild name is shown
 
         when {
-            recipientBlockList.contains(guild.idLong) ->
+            recipientData.blocked.contains(guild.idLong) ->
                 DialingFailedState.Reason.BLOCKED_BY_RECIPIENT
             recipientTextChannel == null || !recipientTextChannel.canTalk() ->
                 DialingFailedState.Reason.RECIPIENT_NO_TEXT_CHANNEL
@@ -98,7 +94,6 @@ class Participant(
      */
     private suspend fun startOutgoingRinging() = coroutineScope<Unit> {
         recipient = recipientInfo.guild!!.initializeCall(
-            recipientInfo.settings!!,
             recipientInfo.messageChannel!!,
             guild.idLong,
             outgoing = false,
@@ -146,13 +141,14 @@ class Participant(
     /**
      * Actually doesn't do much... just joining the voice channel
      */
-    private fun startIncomingRinging() {
-        when (guildSettings.voiceChannelJoinRule) {
+    private suspend fun startIncomingRinging() {
+        val settings = guild.data()
+        when (settings.voiceChannelJoinRule) {
             VoiceChannelJoinRule.MOST_USERS -> guild.voiceStates
                 .map { it.channel }
                 .filter { it != null && guild.selfMember.hasAccess(it) }
                 .maxByOrNull { it!!.members.size }
-            VoiceChannelJoinRule.SELECTED_CHANNEL -> guildSettings.callVoiceChannel
+            VoiceChannelJoinRule.SELECTED_CHANNEL -> settings.callVoiceChannel
                     ?.let { guild.getVoiceChannelById(it) }
                     .takeIf { it != null && guild.selfMember.hasAccess(it) }
             else -> null
@@ -235,12 +231,12 @@ class Participant(
     /**
      * Sets the recipient and its information
      */
-    private suspend fun setRecipientInfo(recipient: Participant) {
-        recipientInfo.set(guild.retrieveContactList(), recipient)
+    private fun setRecipientInfo(recipient: Participant) {
+        recipientInfo.set(recipient)
         this.recipient = recipient
     }
 
-    data class RecipientInfo(
+    inner class RecipientInfo(
         val id: Long,
         var guild: Guild? = null,
         /**
@@ -250,7 +246,6 @@ class Participant(
         var name: String? = null,
         var iconUrl: String? = null,
         var messageChannel: GuildMessageChannel? = null,
-        var settings: GuildSettings? = null,
         /**
          * Whether the recipient is added to the contact list of the guild.
          */
@@ -264,19 +259,16 @@ class Participant(
          * @param messageChannel The message channel of the recipient
          */
         fun set(
-            ownContactList: GuildContactList?,
             guild: Guild?,
-            settings: GuildSettings?,
             messageChannel: GuildMessageChannel?
         ) {
             this.guild = guild?.also {
-                val contact = it.getAsContact(ownContactList)
+                val contact = it.getAsContact(this@Participant.guild.cachedData())
                 this.isFamiliar = contact != null
                 this.name = contact?.name ?: it.name
                 this.iconUrl = it.iconUrl
             }
             this.messageChannel = messageChannel
-            this.settings = settings
         }
 
         /**
@@ -284,10 +276,8 @@ class Participant(
          * @param ownContactList The own contact list of the guild
          * @param recipient The recipient
          */
-        fun set(ownContactList: GuildContactList?, recipient: Participant) = set(
-            ownContactList,
+        fun set(recipient: Participant) = set(
             recipient.guild,
-            recipient.guildSettings,
             recipient.messageChannel
         )
     }
@@ -304,14 +294,13 @@ fun Guild.asParticipant() = participants[idLong]
  * Tries to start a call with the given recipient.
  */
 suspend fun Guild.initializeCall(
-    guildSettings: GuildSettings,
     messageChannel: GuildMessageChannel,
     recipient: Long,
     initialState: State,
     outgoing: Boolean,
     init: suspend Participant.() -> Unit = {}
 ): Participant {
-    val participant = Participant(this, guildSettings, messageChannel, recipient, outgoing)
+    val participant = Participant(this, messageChannel, recipient, outgoing)
     participant.init()
     participants[idLong] = participant
 

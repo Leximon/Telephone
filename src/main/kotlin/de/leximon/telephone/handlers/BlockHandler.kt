@@ -1,7 +1,7 @@
 package de.leximon.telephone.handlers
 
 import de.leximon.telephone.core.data.addBlockedNumber
-import de.leximon.telephone.core.data.countBlockedNumbers
+import de.leximon.telephone.core.data.data
 import de.leximon.telephone.core.data.removeBlockedNumber
 import de.leximon.telephone.util.*
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback
@@ -15,7 +15,7 @@ const val BLOCK_BUTTON = "block"
  * @throws CommandException if the number is already blocked or the block list is full
  */
 suspend fun IReplyCallback.addBlockedNumber(number: Long) {
-    if (guild!!.countBlockedNumbers() >= MAX_BLOCKS)
+    if (guild!!.data().blocked.size >= MAX_BLOCKS)
         throw error("response.command.block-list.max-blocks", MAX_BLOCKS)
     val success = guild!!.addBlockedNumber(number)
     if (!success)

@@ -1,6 +1,6 @@
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.core.data.retrieveBlockList
+import de.leximon.telephone.core.data.data
 import de.leximon.telephone.handlers.addBlockedNumber
 import de.leximon.telephone.handlers.removeBlockedNumber
 import de.leximon.telephone.util.*
@@ -33,7 +33,7 @@ fun blockListCommand() = slashCommand(BLOCK_LIST_COMMAND, "Add/Remove blocked nu
     }
 
     onAutoComplete("remove") { e ->
-        val blockList = e.guild!!.retrieveBlockList().blocked
+        val blockList = e.guild!!.data().blocked
         return@onAutoComplete blockList.map { it.asPhoneNumber().let { n -> Choice(n, n) } }.take(25)
     }
 }

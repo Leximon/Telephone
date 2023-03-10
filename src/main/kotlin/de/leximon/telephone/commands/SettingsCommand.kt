@@ -2,10 +2,9 @@ package de.leximon.telephone.commands
 
 import de.leximon.telephone.core.SoundPack
 import de.leximon.telephone.core.VoiceChannelJoinRule
-import de.leximon.telephone.core.call.asParticipant
-import de.leximon.telephone.core.data.GuildSettings
-import de.leximon.telephone.core.data.retrieveAndUpdateGuildSettings
-import de.leximon.telephone.core.data.updateGuildSettings
+import de.leximon.telephone.core.data.GuildData
+import de.leximon.telephone.core.data.getAndUpdateData
+import de.leximon.telephone.core.data.updateData
 import de.leximon.telephone.handlers.isQuickSetupRunning
 import de.leximon.telephone.handlers.startQuickSetup
 import de.leximon.telephone.util.*
@@ -59,7 +58,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
             throw e.error("response.error.no-access.text-channel", channel.asMention)
 
         e.deferReply().queue()
-        guild.updateGuildSettings(GuildSettings::callTextChannel setTo channel.id)
+        guild.updateData(GuildData::callTextChannel setTo channel.idLong)
         e.hook.success(
             "response.command.settings.incoming-call-text-channel", channel.asMention,
             emoji = Emojis.SETTINGS
@@ -73,7 +72,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
             throw e.error("response.error.no-access.voice-channel", channel.asMention)
 
         e.deferReply().queue()
-        val settings = guild.retrieveAndUpdateGuildSettings(GuildSettings::callVoiceChannel setTo channel.id)
+        val settings = guild.getAndUpdateData(GuildData::callVoiceChannel setTo channel.idLong)
         if (settings.voiceChannelJoinRule == VoiceChannelJoinRule.SELECTED_CHANNEL) {
             e.hook.success(
                 "response.command.settings.incoming-call-voice-channel", channel.asMention,
@@ -94,7 +93,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
             listener { interaction ->
                 if (interaction.componentId != "set-join-rule-selected-channel")
                     return@listener true // ignore button has been pressed
-                guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo VoiceChannelJoinRule.SELECTED_CHANNEL)
+                guild.updateData(GuildData::voiceChannelJoinRule setTo VoiceChannelJoinRule.SELECTED_CHANNEL)
                 interaction.reply(
                     interaction.tl("response.command.settings.voice-channel-join-rule", VoiceChannelJoinRule.SELECTED_CHANNEL.tl(guild))
                         .withEmoji(Emojis.SETTINGS)
@@ -109,7 +108,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         val joinRule = e.getEnumOption<VoiceChannelJoinRule>("rule")!!
 
         e.deferReply().queue()
-        guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo joinRule)
+        guild.updateData(GuildData::voiceChannelJoinRule setTo joinRule)
         if (joinRule != VoiceChannelJoinRule.SELECTED_CHANNEL) {
             e.hook.success(
                 "response.command.settings.voice-channel-join-rule", joinRule.tl(guild),
@@ -145,7 +144,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
                     return@listener false
                 }
 
-                guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo selectedChannel.id)
+                guild.updateData(GuildData::callVoiceChannel setTo selectedChannel.idLong)
                 interaction.reply(
                     interaction.tl("response.command.settings.incoming-call-voice-channel", selectedChannel.asMention)
                         .withEmoji(Emojis.SETTINGS)
@@ -160,8 +159,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         val enabled = e.getOption<Boolean>("enabled")!!
         e.deferReply().queue()
 
-        guild.updateGuildSettings(GuildSettings::muteBots setTo enabled)
-        guild.asParticipant()?.guildSettings?.muteBots = enabled
+        guild.updateData(GuildData::muteBots setTo enabled)
         e.hook.success(
             "response.command.settings.mute-bots.${enabled.tlKey()}",
             emoji = Emojis.SETTINGS
@@ -172,8 +170,8 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         val guild = e.guild!!
         val pack = e.getEnumOption<SoundPack>("pack")!!
         e.deferReply().queue()
-        guild.updateGuildSettings(GuildSettings::soundPack setTo pack)
-        guild.asParticipant()?.guildSettings?.soundPack = pack
+
+        guild.updateData(GuildData::soundPack setTo pack)
         e.hook.success(
             "response.command.settings.sound-pack", pack.tl(guild),
             emoji = Emojis.SETTINGS

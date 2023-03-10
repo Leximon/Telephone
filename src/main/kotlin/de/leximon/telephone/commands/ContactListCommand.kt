@@ -1,8 +1,7 @@
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.core.data.countContacts
+import de.leximon.telephone.core.data.data
 import de.leximon.telephone.core.data.removeContact
-import de.leximon.telephone.core.data.retrieveContactList
 import de.leximon.telephone.handlers.MAX_CONTACTS
 import de.leximon.telephone.handlers.autoCompleteContacts
 import de.leximon.telephone.handlers.replyContactModal
@@ -27,13 +26,13 @@ fun contactListCommand() = slashCommand(CONTACT_LIST_COMMAND, "Add/Edit/Remove c
 
     // events
     onInteract("add") { e ->
-        if (e.guild!!.countContacts() >= MAX_CONTACTS)
+        if (e.guild!!.data().contacts.size >= MAX_CONTACTS)
             throw e.error("response.command.contact-list.max-contacts", MAX_CONTACTS)
         e.replyContactModal().queue()
     }
     onInteract("edit") { e ->
         val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber(e)
-        val contactList = e.guild!!.retrieveContactList().contacts
+        val contactList = e.guild!!.data().contacts
         val contact = contactList.find { c -> c.number == contactNumber }
             ?: throw e.error("response.command.contact-list.unknown-contact")
         e.replyContactModal(contact.name, contact.number, edit = true).queue()

@@ -6,7 +6,9 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason
 import com.sedmelluq.discord.lavaplayer.track.playback.MutableAudioFrame
 import de.leximon.telephone.audioPlayerManager
+import de.leximon.telephone.core.SoundPack
 import de.leximon.telephone.core.SoundType
+import de.leximon.telephone.core.data.cachedData
 import net.dv8tion.jda.api.audio.AudioReceiveHandler
 import net.dv8tion.jda.api.audio.AudioSendHandler
 import net.dv8tion.jda.api.audio.CombinedAudio
@@ -34,7 +36,7 @@ class Audio(
      * Stops streaming the call and plays a sound.
      */
     fun playSound(sound: SoundType, repeat: Boolean = false) {
-        val track = sound.getTrack(participant.guildSettings.soundPack) ?: return
+        val track = sound.getTrack(participant.guild.cachedData()?.soundPack ?: SoundPack.CLASSIC) ?: return
         player.stopTrack()
         eventHandler.repeat = repeat
         player.playTrack(track)
@@ -64,7 +66,7 @@ class Audio(
             participant.recipient?.audio?.streamingHandler?.queue?.add(data)
         }
 
-        override fun shouldReceiveUser(user: User) = !(participant.recipient?.guildSettings?.muteBots ?: false && user.isBot)
+        override fun shouldReceiveUser(user: User) = !(participant.recipient?.guild?.cachedData()?.muteBots ?: false && user.isBot)
 
         // Sending
         override fun canProvide(): Boolean {

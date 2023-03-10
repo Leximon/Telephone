@@ -3,9 +3,7 @@ package de.leximon.telephone.commands
 import de.leximon.telephone.core.call.DialingState
 import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.core.call.initializeCall
-import de.leximon.telephone.core.data.retrieveBlockList
-import de.leximon.telephone.core.data.retrieveContactList
-import de.leximon.telephone.core.data.retrieveSettings
+import de.leximon.telephone.core.data.data
 import de.leximon.telephone.handlers.autoCompleteContacts
 import de.leximon.telephone.handlers.removeBlockedNumber
 import de.leximon.telephone.util.*
@@ -47,11 +45,9 @@ fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord serve
             .getOrElse { throw CommandException(it.message!!) }
 
         e.deferReply(true).queue()
-        val blockList = guild.retrieveBlockList()
-        val contactList = guild.retrieveContactList()
-        val settings = guild.retrieveSettings()
+        val data = guild.data()
 
-        if (blockList.blocked.contains(recipient)) {
+        if (data.blocked.contains(recipient)) {
             val command = e.jda.getCommandByName(BLOCK_LIST_COMMAND)
             val privileges = guild.retrieveCommandPrivileges().await()
             val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
@@ -71,8 +67,8 @@ fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord serve
         }
         e.hook.deleteOriginal().await()
 
-        val participant = guild.initializeCall(settings, messageChannel, recipient, DialingState(), outgoing = true)
-        participant.startDialing(contactList, audioChannel)
+        val participant = guild.initializeCall(messageChannel, recipient, DialingState(), outgoing = true)
+        participant.startDialing(audioChannel)
     }
     onAutoComplete { autoCompleteContacts(it) }
 }

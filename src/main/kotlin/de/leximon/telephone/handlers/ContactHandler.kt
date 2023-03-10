@@ -2,8 +2,8 @@ package de.leximon.telephone.handlers
 
 import de.leximon.telephone.core.data.Contact
 import de.leximon.telephone.core.data.addContact
+import de.leximon.telephone.core.data.data
 import de.leximon.telephone.core.data.editContact
-import de.leximon.telephone.core.data.retrieveContactList
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.events.listener
 import dev.minn.jda.ktx.interactions.components.InlineModal
@@ -20,7 +20,7 @@ const val MAX_CONTACTS = 25
 const val ADD_CONTACT_BUTTON = "add-contact"
 
 suspend fun autoCompleteContacts(e: CommandAutoCompleteInteractionEvent): List<Command.Choice> {
-    val contactList = e.guild!!.retrieveContactList().contacts
+    val contactList = e.guild!!.data().contacts
     return contactList.map(Contact::asChoice).take(25)
 }
 
@@ -53,7 +53,7 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
                 val newName = e.getValue("name")!!.asString
                 val newNumber = e.getValue("number")!!.asString.parsePhoneNumber(e)
 
-                if (guild.retrieveContactList().contacts.size >= MAX_CONTACTS)
+                if (guild.data().contacts.size >= MAX_CONTACTS)
                     throw e.error("response.command.contact-list.max-contacts", MAX_CONTACTS)
 
                 val success = guild.addContact(newName, newNumber)

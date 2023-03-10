@@ -2,8 +2,8 @@ package de.leximon.telephone.handlers
 
 import de.leximon.telephone.commands.SETTINGS_COMMAND
 import de.leximon.telephone.core.VoiceChannelJoinRule
-import de.leximon.telephone.core.data.GuildSettings
-import de.leximon.telephone.core.data.updateGuildSettings
+import de.leximon.telephone.core.data.GuildData
+import de.leximon.telephone.core.data.updateData
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.await
@@ -119,7 +119,7 @@ class QuickSetup(
                 val channel = e.values.first() as GuildMessageChannel
                 if (!channel.canTalk())
                     throw e.error("response.error.no-access.text-channel", channel.asMention)
-                guild.updateGuildSettings(GuildSettings::callTextChannel setTo channel.id)
+                guild.updateData(GuildData::callTextChannel setTo channel.idLong)
                 e.deferEdit().queue()
                 return@listener true
             }
@@ -134,7 +134,7 @@ class QuickSetup(
                 if (e !is StringSelectInteractionEvent)
                     return@listener false
                 val rule = e.enumValues<VoiceChannelJoinRule>().first()
-                guild.updateGuildSettings(GuildSettings::voiceChannelJoinRule setTo rule)
+                guild.updateData(GuildData::voiceChannelJoinRule setTo rule)
                 if (rule == VoiceChannelJoinRule.SELECTED_CHANNEL)
                     selectedChannel = true
                 e.deferEdit().queue()
@@ -157,7 +157,7 @@ class QuickSetup(
                 val channel = e.values.first() as VoiceChannel
                 if (!guild.selfMember.hasAccess(channel))
                     throw e.error("response.error.no-access.voice-channel", channel.asMention)
-                guild.updateGuildSettings(GuildSettings::callVoiceChannel setTo channel.id)
+                guild.updateData(GuildData::callVoiceChannel setTo channel.idLong)
                 e.deferEdit().queue()
                 return@listener true
             }
@@ -171,7 +171,7 @@ class QuickSetup(
             )
 
             listener { e ->
-                guild.updateGuildSettings(GuildSettings::muteBots setTo (e.componentId == "yes"))
+                guild.updateData(GuildData::muteBots setTo (e.componentId == "yes"))
                 e.deferEdit().queue()
                 return@listener true
             }
