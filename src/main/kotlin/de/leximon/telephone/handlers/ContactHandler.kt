@@ -19,7 +19,7 @@ import net.dv8tion.jda.api.sharding.ShardManager
 const val MAX_CONTACTS = 25
 const val ADD_CONTACT_BUTTON = "add-contact"
 
-fun autoCompleteContacts(e: CommandAutoCompleteInteractionEvent): List<Command.Choice> {
+suspend fun autoCompleteContacts(e: CommandAutoCompleteInteractionEvent): List<Command.Choice> {
     val contactList = e.guild!!.retrieveContactList().contacts
     return contactList.map(Contact::asChoice).take(25)
 }

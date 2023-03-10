@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
 import org.bson.Document
 import org.litote.kmongo.*
+import org.litote.kmongo.coroutine.aggregate
 
 @Serializable
 data class GuildBlockList(
@@ -20,17 +21,17 @@ private val collection get() = database.getCollection<GuildBlockList>("guildBloc
 /**
  * Retrieves the guild block list from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveBlockList() = collection
+suspend fun Guild.retrieveBlockList() = collection
     .findOneById(id) ?: GuildBlockList(id)
 
 private data class BlockCount(val count: Int = 0)
 
-fun Guild.countBlockedNumbers() = collection.aggregate<BlockCount>(
+suspend fun Guild.countBlockedNumbers() = collection.aggregate<BlockCount>(
     match(GuildContactList::_id eq id),
     project(Document("count", Document("\$size", "\$blocked")))
-).firstOrNull()?.count ?: 0
+).first()?.count ?: 0
 
-fun Guild.addBlockedNumber(number: Long): Boolean {
+suspend fun Guild.addBlockedNumber(number: Long): Boolean {
     return database.getCollection<GuildContactList>("guildBlockLists")
         .updateOne(
             GuildBlockList::_id eq id,
@@ -39,7 +40,7 @@ fun Guild.addBlockedNumber(number: Long): Boolean {
         ).run { modifiedCount >= 1 || upsertedId != null }
 }
 
-fun Guild.removeBlockedNumber(number: Long): Boolean {
+suspend fun Guild.removeBlockedNumber(number: Long): Boolean {
     return database.getCollection<GuildContactList>("guildBlockLists")
         .updateOne(
             GuildBlockList::_id eq id,

@@ -235,7 +235,7 @@ class Participant(
     /**
      * Sets the recipient and its information
      */
-    private fun setRecipientInfo(recipient: Participant) {
+    private suspend fun setRecipientInfo(recipient: Participant) {
         recipientInfo.set(guild.retrieveContactList(), recipient)
         this.recipient = recipient
     }
@@ -309,7 +309,7 @@ suspend fun Guild.initializeCall(
     recipient: Long,
     initialState: State,
     outgoing: Boolean,
-    init: Participant.() -> Unit = {}
+    init: suspend Participant.() -> Unit = {}
 ): Participant {
     val participant = Participant(this, guildSettings, messageChannel, recipient, outgoing)
     participant.init()

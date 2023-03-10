@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.commands.Command
 import org.bson.Document
 import org.litote.kmongo.*
+import org.litote.kmongo.coroutine.aggregate
 
 @Serializable
 data class GuildContactList(
@@ -31,20 +32,20 @@ private val collection get() = database.getCollection<GuildContactList>("guildCo
 /**
  * Retrieves the guild contact list from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveContactList() = collection
+suspend fun Guild.retrieveContactList() = collection
     .findOneById(id) ?: GuildContactList(id)
 
 private data class ContactCount(val count: Int = 0)
-fun Guild.countContacts() = collection.aggregate<ContactCount>(
+suspend fun Guild.countContacts() = collection.aggregate<ContactCount>(
         match(GuildContactList::_id eq id),
         project(Document("count", Document("\$size", "\$contacts")))
-    ).firstOrNull()?.count ?: 0
+    ).first()?.count ?: 0
 
 /**
  * Removes a contact from the guild contact list
  * @return null if the contact was not found, otherwise the removed contact
  */
-fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
+suspend fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
         GuildContactList::_id eq id,
         pullByFilter(GuildContactList::contacts, Contact::number eq number)
     )?.contacts?.find { c -> c.number == number }
@@ -54,7 +55,7 @@ fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
  * @return null if the contact was not found, otherwise the old contact
  * @throws IllegalArgumentException if a contact with the new name already exists
  */
-fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? {
+suspend fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? {
     val alreadyExists = collection.find(
         and(
             GuildContactList::_id eq id,
@@ -65,7 +66,7 @@ fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? 
                 )
             )
         )
-    ).any()
+    ).first() != null
     if (alreadyExists)
         throw IllegalArgumentException("A contact with the name $newName already exists")
 
@@ -82,7 +83,7 @@ fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? 
  * Adds a contact to the guild contact list
  * @return true if the contact was added, false if the contact already exists
  */
-fun Guild.addContact(name: String, number: Long): Boolean {
+suspend fun Guild.addContact(name: String, number: Long): Boolean {
     try {
         return collection.updateOne(
             and(

@@ -39,13 +39,12 @@ data class GuildSettings(
 /**
  * Retrieves the guild settings from the database or creates a new one if it doesn't exist
  */
-fun Guild.retrieveSettings() = database.getCollection<GuildSettings>("guilds")
+suspend fun Guild.retrieveSettings() = database.getCollection<GuildSettings>("guilds")
     .findOneById(id) ?: GuildSettings(id)
 
-fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
-    .findOneAndUpdate(GuildSettings::_id eq id, set(*updates), FindOneAndUpdateOptions().upsert(true)) ?: GuildSettings(
-    id
-)
+suspend fun Guild.retrieveAndUpdateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
+    .findOneAndUpdate(GuildSettings::_id eq id, set(*updates), FindOneAndUpdateOptions().upsert(true))
+    ?: GuildSettings(id)
 
-fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
-    .updateOneById(id, *updates, options = UpdateOptions().upsert(true))
+suspend fun Guild.updateGuildSettings(vararg updates: SetTo<*>) = database.getCollection<GuildSettings>("guilds")
+    .updateOneById(id, set(*updates), options = UpdateOptions().upsert(true))

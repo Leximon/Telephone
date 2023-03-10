@@ -1,6 +1,6 @@
 package de.leximon.telephone.core.call
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer
+import  com.sedmelluq.discord.lavaplayer.player.AudioPlayer
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason
@@ -10,6 +10,7 @@ import de.leximon.telephone.core.SoundType
 import net.dv8tion.jda.api.audio.AudioReceiveHandler
 import net.dv8tion.jda.api.audio.AudioSendHandler
 import net.dv8tion.jda.api.audio.CombinedAudio
+import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.managers.AudioManager
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -62,6 +63,8 @@ class Audio(
             val data = combinedAudio.getAudioData(1.0)
             participant.recipient?.audio?.streamingHandler?.queue?.add(data)
         }
+
+        override fun shouldReceiveUser(user: User) = !(participant.recipient?.guildSettings?.muteBots ?: false && user.isBot)
 
         // Sending
         override fun canProvide(): Boolean {

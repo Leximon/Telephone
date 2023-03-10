@@ -14,7 +14,7 @@ const val BLOCK_BUTTON = "block"
  * Adds a number to the block list of the guild.
  * @throws CommandException if the number is already blocked or the block list is full
  */
-fun IReplyCallback.addBlockedNumber(number: Long) {
+suspend fun IReplyCallback.addBlockedNumber(number: Long) {
     if (guild!!.countBlockedNumbers() >= MAX_BLOCKS)
         throw error("response.command.block-list.max-blocks", MAX_BLOCKS)
     val success = guild!!.addBlockedNumber(number)
@@ -27,7 +27,7 @@ fun IReplyCallback.addBlockedNumber(number: Long) {
  * Removes a number from the block list of the guild.
  * @throws CommandException if the number is not blocked
  */
-fun IReplyCallback.removeBlockedNumber(number: Long) {
+suspend fun IReplyCallback.removeBlockedNumber(number: Long) {
     val success = guild!!.removeBlockedNumber(number)
     if (!success)
         throw error("response.command.block-list.not-blocked", number.asPhoneNumber())
