@@ -60,7 +60,7 @@ val cache = Cache.Builder()
 /**
  * Gets the guild data (or the cached value)
  */
-suspend fun Guild.data() = cache.get(idLong) { collection.findOneById(id) ?: GuildData(idLong) }
+suspend fun Guild.data() = cache.get(idLong) { collection.findOne(GuildData::_id eq idLong) ?: GuildData(idLong) }
 
 /**
  * Gets the cached guild data or null if not cached
