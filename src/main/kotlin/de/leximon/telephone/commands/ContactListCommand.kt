@@ -27,23 +27,25 @@ fun contactListCommand() = slashCommand(CONTACT_LIST_COMMAND, "Add/Edit/Remove c
     // events
     onInteract("add") { e ->
         if (e.guild!!.data().contacts.size >= MAX_CONTACTS)
-            throw e.error("response.command.contact-list.max-contacts", MAX_CONTACTS)
+            throw CommandException("response.command.contact-list.max-contacts", MAX_CONTACTS)
         e.replyContactModal().queue()
     }
+
     onInteract("edit") { e ->
-        val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber(e)
+        val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber()
         val contactList = e.guild!!.data().contacts
         val contact = contactList.find { c -> c.number == contactNumber }
-            ?: throw e.error("response.command.contact-list.unknown-contact")
+            ?: throw CommandException("response.command.contact-list.unknown-contact")
         e.replyContactModal(contact.name, contact.number, edit = true).queue()
     }
+
     onInteract("remove") { e ->
-        val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber(e)
+        val contactNumber = e.getOption<String>("contact")!!.parsePhoneNumber()
         val prevContact = e.guild!!.removeContact(contactNumber)
         if (prevContact != null)
             e.success("response.modal.contact-list.removed", prevContact.name, emoji = Emojis.CONTACT_LIST).queue()
         else
-            throw e.error("response.command.contact-list.unknown-contact")
+            throw CommandException("response.command.contact-list.unknown-contact")
     }
 
     onAutoComplete { autoCompleteContacts(it) }

@@ -1,6 +1,7 @@
 package de.leximon.telephone.commands
 
 import de.leximon.telephone.core.SoundPack
+import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.core.data.GuildData
 import de.leximon.telephone.core.data.getAndUpdateData
@@ -28,6 +29,9 @@ const val SETTINGS_COMMAND = "settings"
 
 fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the telephone bot") {
     restrict(guild = true, DefaultMemberPermissions.DISABLED)
+    subcommand("language", "Overrides the language for this server") {
+        enumOption<SupportedLanguage>("language", "The language to use", required = true)
+    }
     subcommand("incoming-call-text-channel", "Sets the text channel for incoming calls") {
         option<Channel>(
             "channel",
@@ -51,11 +55,29 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
 
 
     // events
+    onInteract("language", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val language = e.getEnumOption<SupportedLanguage>("language")!!
+        e.deferReply().queue()
+        guild.updateData(GuildData::language setTo language)
+        if (language == SupportedLanguage.UNSET) {
+            e.hook.success(
+                "response.command.settings.language.unset",
+                emoji = Emojis.SETTINGS
+            ).queue()
+            return@onInteract
+        }
+        e.hook.success(
+            "response.command.settings.language", language.formattedName,
+            emoji = Emojis.SETTINGS
+        ).queue()
+    }
+
     onInteract("incoming-call-text-channel", timeout = 1.minutes) { e ->
         val guild = e.guild!!
         val channel = e.getOption<TextChannel>("channel")!!
         if (!channel.canTalk())
-            throw e.error("response.error.no-access.text-channel", channel.asMention)
+            throw CommandException("response.error.no-access.text-channel", channel.asMention)
 
         e.deferReply().queue()
         guild.updateData(GuildData::callTextChannel setTo channel.idLong)
@@ -69,7 +91,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         val guild = e.guild!!
         val channel = e.getOption<VoiceChannel>("channel")!!
         if (!guild.selfMember.hasAccess(channel))
-            throw e.error("response.error.no-access.voice-channel", channel.asMention)
+            throw CommandException("response.error.no-access.voice-channel", channel.asMention)
 
         e.deferReply().queue()
         val settings = guild.getAndUpdateData(GuildData::callVoiceChannel setTo channel.idLong)
@@ -161,7 +183,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
 
         guild.updateData(GuildData::muteBots setTo enabled)
         e.hook.success(
-            "response.command.settings.mute-bots.${enabled.tlKey()}",
+            "response.command.settings.mute-bots.${enabled.key()}",
             emoji = Emojis.SETTINGS
         ).queue()
     }
@@ -181,9 +203,9 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
     onInteract("quick-setup") { e ->
         val channel = e.channel as GuildMessageChannel
         if (!channel.canTalk())
-            throw e.error("response.error.no-access.text-channel", channel.asMention)
+            throw CommandException("response.error.no-access.text-channel", channel.asMention)
         if (isQuickSetupRunning(e.guild!!))
-            throw e.error("quick-setup.already-running")
+            throw CommandException("quick-setup.already-running")
         e.success("quick-setup.started")
             .setEphemeral(true)
             .queue()

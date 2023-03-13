@@ -23,12 +23,12 @@ fun blockListCommand() = slashCommand(BLOCK_LIST_COMMAND, "Add/Remove blocked nu
     }
 
     onInteract("add") { e ->
-        val number = e.getOption<String>("number")!!.parsePhoneNumber(e)
+        val number = e.getOption<String>("number")!!.parsePhoneNumber()
         e.addBlockedNumber(number)
     }
 
     onInteract("remove") { e ->
-        val number = e.getOption<String>("number")!!.parsePhoneNumber(e)
+        val number = e.getOption<String>("number")!!.parsePhoneNumber()
         e.removeBlockedNumber(number)
     }
 

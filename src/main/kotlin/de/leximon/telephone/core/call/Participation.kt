@@ -117,7 +117,7 @@ class Participant(
      * Hangs up the call with a sound and sets the state for both sides. The new state will be determined by the current state of the participant.
      * @param updateHandler how and which message should be updated when changing states of this participant. See also [editByState]
      */
-    suspend fun hangUp(updateHandler: (StateManager.(State) -> Unit)? = null) {
+    suspend fun hangUp(updateHandler: (suspend StateManager.(State) -> Unit)? = null) {
         when (state) {
             is CallActiveState -> {
                 stateManager.setState(CallSuccessState(outgoing, startTimestamp), updateHandler)

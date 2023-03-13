@@ -6,6 +6,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.LOGGER
 import de.leximon.telephone.core.SoundPack
+import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.util.asPhoneNumber
 import de.leximon.telephone.util.database
@@ -20,6 +21,7 @@ import kotlin.time.Duration.Companion.hours
 @Serializable
 data class GuildData(
     val _id: Long,
+    var language: SupportedLanguage = SupportedLanguage.UNSET,
     /**
      * The text channel where the incoming calls are displayed
      */

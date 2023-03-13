@@ -24,16 +24,17 @@ suspend fun autoCompleteContacts(e: CommandAutoCompleteInteractionEvent): List<C
     return contactList.map(Contact::asChoice).take(25)
 }
 
-fun IModalCallback.replyContactModal(
+suspend fun IModalCallback.replyContactModal(
     name: String? = null,
     number: Long? = null,
     edit: Boolean = false
 ): ModalCallbackAction {
+    val nameTl = guild!!.tl("modal.contact.name")
+    val numberTl = guild!!.tl("modal.contact.number")
     val struct: InlineModal.() -> Unit = {
-        short("name", guild!!.tl("modal.contact.name"), required = true, requiredLength = 1..100, value = name)
+        short("name", nameTl, required = true, requiredLength = 1..100, value = name)
         short(
-            "number",
-            guild!!.tl("modal.contact.number"),
+            "number", numberTl,
             required = true,
             requiredLength = 1..32,
             value = number?.asPhoneNumber()
@@ -51,25 +52,26 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
             e.modalId == "add_contact" -> {
                 val guild = e.guild!!
                 val newName = e.getValue("name")!!.asString
-                val newNumber = e.getValue("number")!!.asString.parsePhoneNumber(e)
+                val newNumber = e.getValue("number")!!.asString.parsePhoneNumber()
 
                 if (guild.data().contacts.size >= MAX_CONTACTS)
-                    throw e.error("response.command.contact-list.max-contacts", MAX_CONTACTS)
+                    throw CommandException("response.command.contact-list.max-contacts", MAX_CONTACTS)
 
                 val success = guild.addContact(newName, newNumber)
                 if (success)
                     e.success("response.modal.contact-list.added", newName, emoji = Emojis.CONTACT_LIST).queue()
-                else throw e.error("response.modal.contact-list.already-exists", newName)
+                else
+                    throw CommandException("response.modal.contact-list.already-exists", newName)
             }
 
             e.modalId.startsWith("edit_contact:") -> {
                 val number = e.modalId.split(":")[1].toLong()
                 val newName = e.getValue("name")!!.asString
-                val newNumber = e.getValue("number")!!.asString.parsePhoneNumber(e)
+                val newNumber = e.getValue("number")!!.asString.parsePhoneNumber()
                 try {
                     val prevContact = e.guild!!.editContact(number, newName, newNumber)
                     when {
-                        prevContact == null -> throw e.error("response.command.contact-list.unknown-contact")
+                        prevContact == null -> throw CommandException("response.command.contact-list.unknown-contact")
                         prevContact.name != newName -> e.success(
                             "response.modal.contact-list.edited.renamed",
                             prevContact.name,
@@ -84,7 +86,7 @@ fun ShardManager.contactListModalListener() = listener<ModalInteractionEvent> { 
                         ).queue()
                     }
                 } catch (ex: IllegalArgumentException) {
-                    throw e.error("response.modal.contact-list.already-exists", newName)
+                    throw CommandException("response.modal.contact-list.already-exists", newName)
                 }
             }
         }

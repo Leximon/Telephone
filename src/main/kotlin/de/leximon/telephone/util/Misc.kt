@@ -44,12 +44,14 @@ fun String.asPhoneNumber(): String {
  * Parses a phone number from a string to the long representation.
  * @throws CommandException if the number doesn't meet the requirements
  */
-fun String.parsePhoneNumber(e: IReplyCallback): Long {
+fun String.parsePhoneNumber(): Long {
     val number = replace(Regex("[\\s+]"), "")
-    return number.toLongOrNull() ?: throw e.error("response.error.invalid-phone-number", this)
+    return number.toLongOrNull() ?: throw CommandException("response.error.invalid-phone-number", this)
 }
 
-fun Boolean.tlKey() = if (this) "on" else "off"
+fun Boolean.key() = if (this) "on" else "off"
+
+fun Enum<*>.key() = name.lowercase(Locale.ROOT).replace('_', '-')
 
 /**
  * Prefixes the string with the unicode emoji
@@ -73,20 +75,20 @@ fun Instant.asRelativeTimestamp(): String {
 
 /**
  * Returns the [AudioChannel] of the user who executed the command.
- * @throws [IllegalStateException] if the user is not in a voice channel or the bot has no access to the voice channel.
+ * @throws [CommandException] if the user is not in a voice channel or the bot has no access to the voice channel.
  */
 fun GenericInteractionCreateEvent.getUsersAudioChannel(): AudioChannel {
     val member = member!!
     val voiceState = member.voiceState!!
     val channel = voiceState.channel
     if (channel == null || channel.type != ChannelType.VOICE)
-        throw IllegalStateException(tl("response.error.not-in-voice-channel"))
+        throw CommandException("response.error.not-in-voice-channel")
     if (!guild!!.selfMember.hasAccess(channel))
-        throw IllegalStateException(tl("response.error.no-access.voice-channel", channel.asMention))
+        throw CommandException("response.error.no-access.voice-channel", channel.asMention)
     return channel
 }
 
-fun IMessageEditCallback.editByState(): StateManager.(State) -> Unit = {
+fun IMessageEditCallback.editByState(): suspend StateManager.(State) -> Unit = {
     val msg = MessageEditBuilder(
         replace = true,
         builder = it.buildMessage(this)

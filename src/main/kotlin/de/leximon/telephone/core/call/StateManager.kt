@@ -10,6 +10,7 @@ import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.interactions.components.secondary
 import dev.minn.jda.ktx.interactions.components.success
 import dev.minn.jda.ktx.messages.*
+import net.dv8tion.jda.api.interactions.DiscordLocale
 import java.time.Instant
 import kotlin.time.Duration
 
@@ -36,9 +37,9 @@ class StateManager(val participant: Participant) {
      * Sets the state of the call.
      * @param updateHandler how and which message should be updated. If null, the message by the [messageId] will be updated.
      */
-    fun setState(
+    suspend fun setState(
         state: State,
-        updateHandler: (StateManager.(State) -> Unit)? = null
+        updateHandler: (suspend StateManager.(State) -> Unit)? = null
     ) {
         this.state = state
         if (updateHandler != null)
@@ -50,7 +51,7 @@ class StateManager(val participant: Participant) {
     /**
      * Edits the message to reflect the current state.
      */
-    private fun updateMessage() {
+    private suspend fun updateMessage() {
         val state = state ?: throw IllegalStateException("Cannot update message without state")
         messageChannel.editMessageById(
             messageId!!, MessageEditBuilder(
@@ -67,32 +68,39 @@ class StateManager(val participant: Participant) {
     /**
      * Creates an embed builder with default formatting
      */
-    internal inline fun InlineMessage<*>.callEmbed(builder: InlineEmbed.() -> Unit) {
+    fun callEmbed(inlineMessage: InlineMessage<*>, adapter: Adapter, builder: InlineEmbed.() -> Unit) {
         val recipient = participant.recipientInfo
-        embeds += EmbedBuilder(description = null)
+        inlineMessage.embeds += EmbedBuilder(description = null)
             .apply(builder).apply {
-                description = "${if (description == null) "" else "$description\n\n"} ${
-                    tl(
-                        "embed.call.tel",
-                        recipient.id.asPhoneNumber()
-                    )
-                }"
+                description = "${if (description == null) "" else "$description\n\n"} ${adapter.tl("embed.call.tel", recipient.id.asPhoneNumber())}"
                 recipient.name?.let {
                     footer(it, recipient.iconUrl)
                 }
             }.build()
     }
+}
 
-    internal fun tl(key: String, vararg args: Any) = participant.guild.tl(key, *args)
+
+class Adapter(val stateManager: StateManager, val locale: DiscordLocale) {
+    val participant by stateManager::participant
+
+    fun tl(key: String, vararg args: Any) = tl(locale, key, *args)
+
+    fun InlineMessage<*>.callEmbed(
+        builder: InlineEmbed.() -> Unit
+    ) = stateManager.callEmbed(this, this@Adapter, builder)
 }
 
 interface State {
-    fun StateManager.message(): InlineMessage<*>.() -> Unit
-    fun buildMessage(stateManager: StateManager) = stateManager.message()
+    fun Adapter.message(): InlineMessage<*>.() -> Unit
+    suspend fun buildMessage(stateManager: StateManager): InlineMessage<*>.() -> Unit {
+        val locale = stateManager.participant.guild.preferredLocale()
+        return Adapter(stateManager, locale).message()
+    }
 }
 
 class DialingState : State {
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl("embed.call.dialing")
             color = 0xffff55
@@ -101,7 +109,7 @@ class DialingState : State {
 }
 
 class DialingFailedState(private val reason: Reason) : State {
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl(reason.title)
             description = reason.description?.run { tl(this) }
@@ -125,7 +133,7 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
     companion object {
         const val HANGUP_BUTTON = "outgoing-hangup"
     }
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl("embed.call.outgoing")
             automaticHangup?.let {
@@ -151,7 +159,7 @@ class IncomingCallState(private val userCount: Int) : State {
         const val HANGUP_BUTTON = "incoming-hangup"
         const val PICKUP_BUTTON = "incoming-pickup"
     }
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl("embed.call.incoming")
             description = tl("embed.call.incoming.description", userCount)
@@ -170,7 +178,7 @@ class CallSuccessState(
     private val outgoing: Boolean,
     private val startTimestamp: Instant? = null
 ) : State {
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl(if (outgoing) "embed.call.success.outgoing" else "embed.call.success.incoming")
             startTimestamp?.let {
@@ -186,33 +194,40 @@ class CallSuccessState(
 }
 
 class CallFailedState(private val reason: Reason) : State {
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
-            color = 0xff5555
-            reason.builder(this, this@message)
+            title = tl(reason.title)
+            description = reason.description?.run { tl(this) }
+            thumbnail = reason.thumbnail
+            color = reason.color
         }
     }
 
-    enum class Reason(val builder: (InlineEmbed.(StateManager) -> Unit)) {
-        OUTGOING_REJECTED({
-            title = it.tl("embed.call.failed.outgoing")
-            description = it.tl("embed.call.failed.description.rejected")
+    enum class Reason(
+        val title: String,
+        val description: String? = null,
+        val thumbnail: String,
+        val color : Int = 0xff5555
+    ) {
+        OUTGOING_REJECTED(
+            title = "embed.call.failed.outgoing",
+            description = "embed.call.failed.description.rejected",
             thumbnail = "https://bot-telephone.com/assets/outgoing_failed.png"
-        }),
-        OUTGOING_NO_RESPONSE({
-            title = it.tl("embed.call.failed.outgoing")
-            description = it.tl("embed.call.failed.description.no-response")
+        ),
+        OUTGOING_NO_RESPONSE(
+            title = "embed.call.failed.outgoing",
+            description = "embed.call.failed.description.no-response",
             thumbnail = "https://bot-telephone.com/assets/outgoing_failed.png"
-        }),
-        INCOMING_REJECTED({
-            title = it.tl("embed.call.failed.rejected")
+        ),
+        INCOMING_REJECTED(
+            title = "embed.call.failed.rejected",
             thumbnail = "https://bot-telephone.com/assets/rejected.png"
-        }),
-        INCOMING_MISSED({
-            title = it.tl("embed.call.failed.missed")
-            thumbnail = "https://bot-telephone.com/assets/missed.png"
+        ),
+        INCOMING_MISSED(
+            title = "embed.call.failed.missed",
+            thumbnail = "https://bot-telephone.com/assets/missed.png",
             color = 0xffff55
-        })
+        )
     }
 }
 
@@ -222,7 +237,8 @@ class CallActiveState(
     companion object {
         const val HANGUP_BUTTON = "active-hangup"
     }
-    override fun StateManager.message(): InlineMessage<*>.() -> Unit = {
+
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl("embed.call.active")
             description = tl("embed.call.active.description", startTimestamp.asRelativeTimestamp())

@@ -1,5 +1,6 @@
 package de.leximon.telephone.util
 
+import de.leximon.telephone.core.data.data
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.DiscordLocale
 import net.dv8tion.jda.api.interactions.Interaction
@@ -45,14 +46,19 @@ object Localization : LocalizationFunction {
     }
 }
 
+suspend fun Guild.preferredLocale() = data().language.locale ?: locale
+
 fun tl(locale: DiscordLocale, key: String, vararg args: Any) = Localization.tl(locale, key, *args)
 
-fun Guild.tl(key: String, vararg args: Any) = Localization.tl(locale, key, *args)
+suspend fun Guild.tl(key: String, vararg args: Any) = Localization.tl(preferredLocale(), key, *args)
 
 /**
  * @param user Whether the locale of the user should be used instead of the guild locale
  */
-fun Interaction.tl(key: String, vararg args: Any, user: Boolean = false) = Localization.tl(
-    if (user || !isFromGuild) userLocale else guildLocale,
+suspend fun Interaction.tl(key: String, vararg args: Any, user: Boolean = false) = Localization.tl(
+    if (user || !isFromGuild)
+        userLocale
+    else
+        guild?.preferredLocale() ?: guildLocale,
     key, *args
 )

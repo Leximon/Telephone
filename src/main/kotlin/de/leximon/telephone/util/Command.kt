@@ -82,11 +82,10 @@ inline fun handleExceptions(e: IReplyCallback, func: () -> Unit) {
     try {
         func()
     } catch (ex: CommandException) {
-        val message = (ex.message ?: "An error occurred").withEmoji(Emojis.ERROR)
+        val msg = tl(if (e.isFromGuild) e.guildLocale else e.userLocale, ex.key, *ex.args).withEmoji(Emojis.ERROR)
         if (e.isAcknowledged)
-            e.hook.editOriginal(message).queue()
-        else e.reply(message).setEphemeral(true).queue()
-
+            e.hook.editOriginal(msg).queue()
+        else e.reply(msg).setEphemeral(true).queue()
     } catch (ex: MongoException) {
         val msg = "An error occurred while interacting with the database!"
         val embed = EmbedBuilder {
@@ -98,23 +97,26 @@ inline fun handleExceptions(e: IReplyCallback, func: () -> Unit) {
             e.hook.editOriginalEmbeds(embed).queue()
         else e.replyEmbeds(embed).setEphemeral(true).queue()
         LOGGER.error(msg, ex)
+    } catch (ex: Exception) {
+        val embed = EmbedBuilder {
+            title = "Unexpected Error"
+            description = "Something went wrong."
+            color = 0xFF0000
+        }.build()
+        if (e.isAcknowledged)
+            e.hook.editOriginalEmbeds(embed).queue()
+        else e.replyEmbeds(embed).setEphemeral(true).queue()
+        LOGGER.error("Unexpected Error", ex)
     }
 }
 
-// response utils
-class CommandException(message: String) : RuntimeException(message)
+class CommandException(val key: String, vararg val args: Any) : RuntimeException(key)
 
-fun IReplyCallback.error(
-    key: String, vararg args: Any
-) = CommandException(tl(key, *args))
-fun IReplyCallback.success(
+suspend fun IReplyCallback.success(
     key: String, vararg args: Any, emoji: Emoji? = null
 ) = reply((emoji?.forPrefix() ?: "") + tl(key, *args))
 
-fun InteractionHook.error(
-    key: String, vararg args: Any
-) = editOriginal(interaction.tl(key, *args))
-fun InteractionHook.success(
+suspend fun InteractionHook.success(
     key: String, vararg args: Any,
     emoji: Emoji? = null,
 ) = editOriginal((emoji?.forPrefix() ?: "") + interaction.tl(key, *args))
@@ -126,13 +128,13 @@ fun InteractionHook.success(
  */
 suspend fun IReplyCallback.successWithFurtherInteraction(
     key: String, vararg args: Any, emoji: Emoji? = null,
-    timeout: Duration = 30.seconds, interactionBuilder: InlineInteractiveMessage.() -> Unit
+    timeout: Duration = 30.seconds, interactionBuilder: suspend InlineInteractiveMessage.() -> Unit
 ) {
     val text = tl(key, *args).withEmoji(emoji)
     val interactiveMessage = InlineInteractiveMessage { if (it == null) text else "$text\n\n$it" }
         .apply {
             filter = requiresUser(user, guild)
-        }.apply(interactionBuilder)
+        }.apply { interactionBuilder() }
 
     replyOrEdit(interactiveMessage.builder()).queue()
 

@@ -63,7 +63,7 @@ fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout
                 val privileges = guild.retrieveCommandPrivileges().await()
                 val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
                 if (!permitted)
-                    throw e.error("response.error.not-permitted-by-command.button", "/$CONTACT_LIST_COMMAND")
+                    throw CommandException("response.error.not-permitted-by-command.button", "/$CONTACT_LIST_COMMAND")
                 e.replyContactModal(it.guild.name, it.guild.idLong).queue()
             }
 
@@ -73,7 +73,7 @@ fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout
                 val privileges = guild.retrieveCommandPrivileges().await()
                 val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
                 if (!permitted)
-                    throw e.error("response.error.not-permitted-by-command.button", "/$BLOCK_LIST_COMMAND")
+                    throw CommandException("response.error.not-permitted-by-command.button", "/$BLOCK_LIST_COMMAND")
                 val number = it.guild.idLong
                 val formattedNumber = it.guild.idLong.asPhoneNumber()
 

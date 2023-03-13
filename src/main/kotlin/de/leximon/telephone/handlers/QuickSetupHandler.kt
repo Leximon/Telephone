@@ -44,15 +44,15 @@ fun ShardManager.quickSetupListener() = listener<ButtonInteractionEvent>(timeout
     if (e.componentId != QUICK_SETUP_BUTTON)
         return@listener
     if (isQuickSetupRunning(guild))
-        throw e.error("quick-setup.already-running")
+        throw CommandException("quick-setup.already-running")
     if (!channel.canTalk())
-        throw e.error("response.error.no-access.text-channel", channel.asMention)
+        throw CommandException("response.error.no-access.text-channel", channel.asMention)
 
     val privileges = guild.retrieveCommandPrivileges().await()
     val command = e.jda.getCommandByName(SETTINGS_COMMAND)
     val permitted = privileges.hasCommandPermission(channel, command, member)
     if (!permitted)
-        throw e.error("response.error.not-permitted-by-command.button", "/$SETTINGS_COMMAND")
+        throw CommandException("response.error.not-permitted-by-command.button", "/$SETTINGS_COMMAND")
 
     e.disableComponents().queue()
     startQuickSetup(channel, member)
@@ -77,11 +77,11 @@ class QuickSetup(
     val guild = channel.guild
     var messageId: Long? = null
 
-    suspend fun step(builder: InlineInteractiveMessage.() -> Unit) {
+    suspend fun step(block: suspend InlineInteractiveMessage.() -> Unit) {
         val message = InlineInteractiveMessage { it?.withEmoji(Emojis.SETTINGS) }
             .apply {
                 filter = requiresUser(member.user, guild)
-            }.apply(builder)
+            }.apply { block() }
 
         messageId?.let {
             channel.editMessageById(it, MessageEdit(builder = message.builder())).queue()
@@ -118,7 +118,7 @@ class QuickSetup(
                     return@listener false
                 val channel = e.values.first() as GuildMessageChannel
                 if (!channel.canTalk())
-                    throw e.error("response.error.no-access.text-channel", channel.asMention)
+                    throw CommandException("response.error.no-access.text-channel", channel.asMention)
                 guild.updateData(GuildData::callTextChannel setTo channel.idLong)
                 e.deferEdit().queue()
                 return@listener true
@@ -156,7 +156,7 @@ class QuickSetup(
                     return@listener false
                 val channel = e.values.first() as VoiceChannel
                 if (!guild.selfMember.hasAccess(channel))
-                    throw e.error("response.error.no-access.voice-channel", channel.asMention)
+                    throw CommandException("response.error.no-access.voice-channel", channel.asMention)
                 guild.updateData(GuildData::callVoiceChannel setTo channel.idLong)
                 e.deferEdit().queue()
                 return@listener true

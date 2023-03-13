@@ -17,7 +17,6 @@ import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.into
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -35,15 +34,13 @@ fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord serve
     onInteract(timeout = 2.minutes) { e ->
         val guild = e.guild!!
         if (!e.channel.canTalk())
-            throw e.error("response.error.no-access.text-channel", e.channel.asMention)
+            throw CommandException("response.error.no-access.text-channel", e.channel.asMention)
         if (guild.asParticipant() != null)
-            throw e.error("response.command.call.already-in-use", guild.name)
+            throw CommandException("response.command.call.already-in-use", guild.name)
 
-        val recipient = e.getOption<String>("number")!!.parsePhoneNumber(e)
+        val recipient = e.getOption<String>("number")!!.parsePhoneNumber()
         val messageChannel = e.channel as GuildMessageChannel
-        val audioChannel = e.runCatching(GenericInteractionCreateEvent::getUsersAudioChannel)
-            .getOrElse { throw CommandException(it.message!!) }
-
+        val audioChannel = e.getUsersAudioChannel()
         e.deferReply(true).queue()
         val data = guild.data()
 

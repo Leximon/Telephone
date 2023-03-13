@@ -47,16 +47,19 @@ class InlineInteractiveMessage(
     }
 }
 
-fun requiresUser(
+suspend fun requiresUser(
     user: User,
     guild: Guild?
-): (GenericComponentInteractionCreateEvent) -> Boolean = { e ->
-    if (e.user == user && (guild == null || e.guild == guild))
-        true
-    else {
-        e.reply(
-            e.tl("response.error.not-allowed-to-interact").withEmoji(Emojis.NOT_PERMITTED)
-        ).setEphemeral(true).queue()
-        false
+): (GenericComponentInteractionCreateEvent) -> Boolean {
+    val locale = guild?.preferredLocale()
+    return { e ->
+        if (e.user == user && (guild == null || e.guild == guild))
+            true
+        else {
+            e.reply(tl(locale ?: e.userLocale, "response.error.not-allowed-to-interact").withEmoji(Emojis.NOT_PERMITTED))
+                .setEphemeral(true)
+                .queue()
+            false
+        }
     }
 }
