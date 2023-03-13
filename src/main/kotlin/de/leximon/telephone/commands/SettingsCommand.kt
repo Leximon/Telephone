@@ -200,7 +200,8 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         ).queue()
     }
 
-    onInteract("quick-setup") { e ->
+
+    onInteract("quick-setup", timeout = 31.minutes) { e ->
         val channel = e.channel as GuildMessageChannel
         if (!channel.canTalk())
             throw CommandException("response.error.no-access.text-channel", channel.asMention)

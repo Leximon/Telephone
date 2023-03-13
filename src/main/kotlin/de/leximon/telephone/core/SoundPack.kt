@@ -14,7 +14,7 @@ enum class SoundPack(private val defaultName: String) {
     MY_UNCLE("Discord: My Uncle");
 
     val directory = name.lowercase(Locale.ROOT)
-    val translationKey = "response.command.settings.sound-pack.${key()}"
+    val translationKey = "response.command.settings.sound-pack.option.${key()}"
 
     override fun toString() = defaultName
 

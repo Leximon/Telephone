@@ -135,7 +135,7 @@ inline fun <reified E : Enum<E>> EnumSelectMenu(
     placeholder: String? = null,
     valueRange: IntRange = 1..1,
     disabled: Boolean = false,
-    labelMapper: (E) -> String = { it.name },
+    optionDecorator: SelectOption.(E) -> SelectOption = { this },
     builder: StringSelectMenu.Builder.() -> Unit = {}
 ): StringSelectMenu {
     val constants = E::class.java.enumConstants
@@ -144,7 +144,7 @@ inline fun <reified E : Enum<E>> EnumSelectMenu(
         placeholder,
         valueRange,
         disabled,
-        constants.map { SelectOption.of(labelMapper(it), it.name) },
+        constants.map { optionDecorator(SelectOption.of(it.name, it.name), it) },
         builder
     )
 }

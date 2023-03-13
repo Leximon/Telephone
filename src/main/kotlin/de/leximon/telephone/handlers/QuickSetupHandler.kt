@@ -1,6 +1,7 @@
 package de.leximon.telephone.handlers
 
 import de.leximon.telephone.commands.SETTINGS_COMMAND
+import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.core.data.GuildData
 import de.leximon.telephone.core.data.updateData
@@ -105,6 +106,27 @@ class QuickSetup(
 
     suspend fun start() {
         step {
+            message = guild.tl("quick-setup.language")
+            components += row(EnumSelectMenu<SupportedLanguage>(
+                "set-language",
+                optionDecorator = {
+                    withLabel(
+                        if (it == SupportedLanguage.UNSET) guild.tl("response.command.settings.language.option.unset") else it.toString()
+                    ).withEmoji(it.emoji)
+                }
+            ))
+
+            listener { e ->
+                if (e !is StringSelectInteractionEvent)
+                    return@listener false
+                val language = e.enumValues<SupportedLanguage>().first()
+                guild.updateData(GuildData::language setTo language)
+                e.deferEdit().queue()
+                return@listener true
+            }
+        }
+
+        step {
             message = guild.tl("quick-setup.incoming-call-text-channel")
             components += row(EntitySelectMenu(
                 "set-incoming-call-text-channel",
@@ -128,7 +150,10 @@ class QuickSetup(
         var selectedChannel = false
         step {
             message = guild.tl("quick-setup.voice-channel-join-rule")
-            components += row(EnumSelectMenu<VoiceChannelJoinRule>("set-voice-channel-join-rule", labelMapper = { it.tl(guild) }))
+            components += row(EnumSelectMenu<VoiceChannelJoinRule>(
+                "set-voice-channel-join-rule",
+                optionDecorator = { withLabel(it.tl(guild)) }
+            ))
 
             listener { e ->
                 if (e !is StringSelectInteractionEvent)

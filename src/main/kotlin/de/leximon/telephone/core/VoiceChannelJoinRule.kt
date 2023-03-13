@@ -9,7 +9,7 @@ enum class VoiceChannelJoinRule(private val defaultName: String) {
     SELECTED_CHANNEL("Selected channel"),
     NEVER("Never");
 
-    val translationKey = "response.command.settings.voice-channel-join-rule.${key()}"
+    val translationKey = "response.command.settings.voice-channel-join-rule.option.${key()}"
 
     suspend fun tl(guild: Guild) = guild.tl(translationKey)
 
