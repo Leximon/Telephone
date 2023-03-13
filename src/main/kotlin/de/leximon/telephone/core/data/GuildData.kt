@@ -4,6 +4,7 @@ package de.leximon.telephone.core.data
 
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.UpdateOptions
+import de.leximon.telephone.LOGGER
 import de.leximon.telephone.core.SoundPack
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.util.asPhoneNumber
@@ -13,6 +14,7 @@ import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.commands.Command
 import org.litote.kmongo.*
+import kotlin.reflect.KMutableProperty1
 import kotlin.time.Duration.Companion.hours
 
 @Serializable
@@ -38,8 +40,9 @@ data class GuildData(
      * The sounds used for calls
      */
     var soundPack: SoundPack = SoundPack.CLASSIC,
-    val contacts: List<Contact> = emptyList(),
-    val blocked: List<Long> = emptyList()
+    var yellowPages: Boolean = false,
+    val contacts: MutableList<Contact> = mutableListOf(),
+    val blocked: MutableList<Long> = mutableListOf()
 )
 
 @Serializable
@@ -71,7 +74,7 @@ suspend fun Guild.updateData(vararg updates: SetTo<*>) = collection.updateOne(
     GuildData::_id eq idLong,
     set(*updates),
     UpdateOptions().upsert(true)
-).also { cache.invalidate(idLong) }
+).also { updateCachedValues(updates) }
 
 /**
  * Gets the guild data and updates it
@@ -81,4 +84,13 @@ suspend fun Guild.getAndUpdateData(vararg updates: SetTo<*>) = (collection.findO
     GuildData::_id eq idLong,
     set(*updates),
     FindOneAndUpdateOptions().upsert(true)
-) ?: GuildData(idLong)).also { cache.invalidate(idLong) }
+) ?: GuildData(idLong)).also { updateCachedValues(updates) }
+
+private fun Guild.updateCachedValues(updates: Array<out SetTo<*>>) {
+    cachedData()?.let { data ->
+        updates.forEach {
+            (it.property as? KMutableProperty1<*, *>)?.setter?.call(data, it.value)
+                ?: LOGGER.warn("Could not update cached data")
+        }
+    }
+}

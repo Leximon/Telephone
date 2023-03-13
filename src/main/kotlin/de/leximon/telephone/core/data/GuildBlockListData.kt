@@ -11,12 +11,14 @@ suspend fun Guild.addBlockedNumber(number: Long) = collection.updateOne(
     addToSet(GuildData::blocked, number),
     options = UpdateOptions().upsert(true)
 ).run { modifiedCount >= 1 || upsertedId != null }.also {
-    cache.invalidate(idLong)
+    // update in cache
+    if (it) cachedData()?.blocked?.add(number)
 }
 
 suspend fun Guild.removeBlockedNumber(number: Long) = collection.updateOne(
     GuildData::_id eq idLong,
     pull(GuildData::blocked, number)
 ).run { modifiedCount >= 1 }.also {
-    cache.invalidate(idLong)
+    // update in cache
+    if (it) cachedData()?.blocked?.remove(number)
 }

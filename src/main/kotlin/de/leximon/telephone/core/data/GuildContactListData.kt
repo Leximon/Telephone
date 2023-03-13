@@ -16,7 +16,8 @@ suspend fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
     GuildData::_id eq idLong,
     pullByFilter(GuildData::contacts, Contact::number eq number)
 )?.contacts?.find { c -> c.number == number }.also {
-    cache.invalidate(idLong)
+    // update in cache
+    if (it != null) cachedData()?.contacts?.remove(it)
 }
 
 /**
@@ -41,8 +42,11 @@ suspend fun Guild.editContact(number: Long, newName: String, newNumber: Long): C
             GuildData::contacts / Contact::number eq number
         ),
         set(GuildData::contacts.posOp setTo Contact(newName, newNumber))
-    )?.contacts?.find { c -> c.number == number }.also {
-        cache.invalidate(idLong)
+    )?.contacts?.find { c -> c.number == number }.also { c ->
+        // update in cache
+        if (c != null) cachedData()?.contacts?.let {
+            it.set(it.indexOf(c), Contact(newName, newNumber))
+        }
     }
 }
 
@@ -59,7 +63,10 @@ suspend fun Guild.addContact(name: String, number: Long): Boolean {
             ),
             addToSet(GuildData::contacts, Contact(name, number)),
             options = UpdateOptions().upsert(true)
-        ).also { cache.invalidate(idLong) }.run { modifiedCount >= 1 || upsertedId != null }
+        ).run { modifiedCount >= 1 || upsertedId != null }.also {
+            // update in cache
+            if (it) cachedData()?.contacts?.add(Contact(name, number))
+        }
     } catch (e: MongoWriteException) {
         if (e.code == 11000)
             return false
