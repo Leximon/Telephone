@@ -29,14 +29,14 @@ data class GuildYellowPageData(
 
 val yellowPageCollection = database.getCollection<GuildYellowPageData>("yellow_pages")
 
-suspend fun Guild.enableYellowPage() = yellowPageCollection.updateOne(
+suspend fun Guild.enableYellowPage(upsert: Boolean = true) = yellowPageCollection.updateOne(
     GuildYellowPageData::_id eq idLong,
     set(
         GuildYellowPageData::name setTo name,
         GuildYellowPageData::icon setTo iconId,
         GuildYellowPageData::locale setTo preferredLocale()
     ),
-    options = UpdateOptions().upsert(true)
+    options = UpdateOptions().upsert(upsert)
 ).run { modifiedCount >= 1 || upsertedId != null }
 
 suspend fun Guild.disableYellowPage() = yellowPageCollection.deleteOne(GuildYellowPageData::_id eq idLong).run { deletedCount >= 1 }

@@ -74,6 +74,7 @@ fun main(args: Array<String>) {
             quickSetupListener()
             contactListModalListener()
             interruptionListeners()
+            yellowPagesListener()
 
             listener<GuildJoinEvent> { e ->
                 val channel = e.guild.firstPermittedTextChannel ?: return@listener

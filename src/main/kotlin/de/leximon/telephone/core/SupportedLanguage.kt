@@ -11,5 +11,5 @@ enum class SupportedLanguage(val locale: DiscordLocale?, val flagUnicode: String
     val emoji get() = flagUnicode?.let { Emoji.fromUnicode(it) }
     val formattedName
         get() = "** **$flagUnicode `${toString()}`"
-    override fun toString() = locale?.let { "${it.nativeName} (${it.languageName})" } ?: "Use guild language"
+    override fun toString() = locale?.let { "${it.nativeName} (${it.languageName})" } ?: "Use server language"
 }

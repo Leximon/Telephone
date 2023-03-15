@@ -61,6 +61,7 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         val language = e.getEnumOption<SupportedLanguage>("language")!!
         e.deferReply().queue()
         guild.updateData(GuildData::language setTo language)
+        guild.enableYellowPage(upsert = false)
         if (language == SupportedLanguage.UNSET) {
             e.hook.success(
                 "response.command.settings.language.unset",
