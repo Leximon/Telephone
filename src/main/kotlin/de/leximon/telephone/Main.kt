@@ -5,6 +5,8 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import de.leximon.telephone.commands.*
 import de.leximon.telephone.core.Sound
+import de.leximon.telephone.core.data.deleteData
+import de.leximon.telephone.core.data.disableYellowPage
 import de.leximon.telephone.handlers.*
 import de.leximon.telephone.util.*
 import de.leximon.telephone.util.audio.ResourceAudioSourceManager
@@ -18,6 +20,7 @@ import kotlinx.coroutines.runBlocking
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
+import net.dv8tion.jda.api.events.guild.GuildLeaveEvent
 import net.dv8tion.jda.api.interactions.DiscordLocale
 import net.dv8tion.jda.api.requests.GatewayIntent
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder
@@ -78,6 +81,12 @@ fun main(args: Array<String>) {
                     embeds = listOf(createSummaryEmbed(e.guild.locale, e.jda)),
                     components = primary(QUICK_SETUP_BUTTON, tl(e.guild.locale, "button.quick-setup"), emoji = Emojis.SETTINGS).into()
                 ).queue()
+            }
+
+            listener<GuildLeaveEvent> { e ->
+                val guild = e.guild
+                guild.disableYellowPage()
+                guild.deleteData()
             }
         }
     }

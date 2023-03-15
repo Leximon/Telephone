@@ -95,3 +95,5 @@ private fun Guild.updateCachedValues(updates: Array<out SetTo<*>>) {
         }
     }
 }
+
+suspend fun Guild.deleteData() = guildCollection.deleteOne(GuildData::_id eq idLong).also { cache.invalidate(idLong) }
