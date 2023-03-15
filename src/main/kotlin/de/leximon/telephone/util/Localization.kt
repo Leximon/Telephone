@@ -1,5 +1,6 @@
 package de.leximon.telephone.util
 
+import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.data.data
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.DiscordLocale
@@ -14,7 +15,8 @@ object Localization : LocalizationFunction {
     private var generalBundles = emptyMap<DiscordLocale, ResourceBundle>()
     private var fallbackLocale: DiscordLocale? = null
 
-    fun init(commandBundle: String, generalBundle: String, vararg locales: DiscordLocale) {
+    fun init(commandBundle: String, generalBundle: String) {
+        val locales = SupportedLanguage.values().mapNotNull { it.locale }
         fallbackLocale = locales.first()
         commandBundles = locales
             .filter { it != fallbackLocale }

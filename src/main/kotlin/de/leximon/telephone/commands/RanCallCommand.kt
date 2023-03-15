@@ -2,36 +2,29 @@
 
 package de.leximon.telephone.commands
 
-import de.leximon.telephone.core.call.DialingState
+import de.leximon.telephone.core.call.SearchingState
 import de.leximon.telephone.core.call.asParticipant
 import de.leximon.telephone.core.call.initializeCall
-import de.leximon.telephone.core.data.data
-import de.leximon.telephone.handlers.autoCompleteContacts
-import de.leximon.telephone.handlers.removeBlockedNumber
+import de.leximon.telephone.core.data.enableYellowPage
+import de.leximon.telephone.core.data.findRandomGuildOnYellowPage
+import de.leximon.telephone.core.data.isYellowPageEnabled
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.awaitButton
-import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.restrict
-import dev.minn.jda.ktx.interactions.components.danger
-import dev.minn.jda.ktx.interactions.components.getOption
+import dev.minn.jda.ktx.interactions.components.primary
 import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.into
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-const val CALL_COMMAND = "call"
+const val RAN_CALL_COMMAND = "ran-call"
 
-fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord server") {
+fun ranCallCommand() = slashCommand("ran-call", "Starts a call to a random discord server on the yellow pages") {
     restrict(guild = true)
-    option<String>(
-        "number",
-        "The phone number of the discord server (Discord Server ID)",
-        required = true,
-        autocomplete = true
-    )
 
     onInteract(timeout = 2.minutes) { e ->
         val guild = e.guild!!
@@ -40,26 +33,26 @@ fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord serve
         if (guild.asParticipant() != null)
             throw CommandException("response.command.call.already-in-use")
 
-        val recipient = e.getOption<String>("number")!!.parsePhoneNumber()
         val messageChannel = e.channel as GuildMessageChannel
         val audioChannel = e.getUsersAudioChannel()
         e.deferReply(true).queue()
 
-        if (guild.data().blocked.contains(recipient)) {
-            val command = e.jda.getCommandByName(BLOCK_LIST_COMMAND)
+        if (!guild.isYellowPageEnabled()) {
+            val command = e.jda.getCommandByName(SETTINGS_COMMAND)
             val privileges = guild.retrieveCommandPrivileges().await()
             val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
-            val unblockButton = danger("unblock:$recipient", e.tl("button.unblock")).takeIf { permitted }
+            val enableButton = primary("enable-yellow-pages", e.tl("button.enable-yellow-pages")).takeIf { permitted }
             e.hook.editOriginal(MessageEdit {
-                content = e.tl("response.command.call.blocked", recipient.asPhoneNumber()).withEmoji(Emojis.ERROR)
-                unblockButton?.let { components += it.into() }
+                content = e.tl("response.command.ran-call.not-on-yellow-pages").withEmoji(Emojis.ERROR)
+                enableButton?.let { components += it.into() }
             }).queue()
 
-            if (unblockButton == null)
+            if (enableButton == null)
                 return@onInteract
             withTimeoutOrNull(30.seconds) {
-                val pressed = e.user.awaitButton(unblockButton)
-                pressed.removeBlockedNumber(recipient)
+                val pressed = e.user.awaitButton(enableButton)
+                guild.enableYellowPage()
+                pressed.success("response.command.settings.yellow-pages.on", emoji = Emojis.SETTINGS).queue()
             }
             e.hook.deleteOriginal().queue()
             return@onInteract
@@ -68,11 +61,16 @@ fun callCommand() = slashCommand(CALL_COMMAND, "Starts a call to a discord serve
 
         if (guild.asParticipant() != null) // check again, because another user could have started a call in the meantime
             return@onInteract
-        val participant = guild.initializeCall(messageChannel, outgoing = true).also {
-            it.preInitTarget(recipient)
-            it.sendInitialState(DialingState())
+        val participant = guild.initializeCall(messageChannel, outgoing = true)
+        participant.sendInitialState(SearchingState())
+        val target = guild.findRandomGuildOnYellowPage()
+        if (target == null) {
+            participant.stateManager.setState(SearchingState(failed = true))
+            participant.close()
+            return@onInteract
         }
-        participant.startDialing(audioChannel, setState = false)
+        delay(3.seconds)
+        participant.preInitTarget(target._id)
+        participant.startDialing(audioChannel, setState = true)
     }
-    onAutoComplete { autoCompleteContacts(it) }
 }

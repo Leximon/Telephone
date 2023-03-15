@@ -7,7 +7,6 @@ import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.InlineMessage
 import dev.minn.jda.ktx.messages.MessageCreate
 import dev.minn.jda.ktx.messages.MessageEdit
-import dev.minn.jda.ktx.messages.MessageEditBuilder
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.ChannelType
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
@@ -89,10 +88,11 @@ fun GenericInteractionCreateEvent.getUsersAudioChannel(): AudioChannel {
 }
 
 fun IMessageEditCallback.editByState(): suspend StateManager.(State) -> Unit = {
-    val msg = MessageEditBuilder(
-        replace = true,
+    val msg = MessageEdit (
+        components = emptyList(),
+        embeds = emptyList(),
         builder = it.buildMessage(this)
-    ).build()
+    )
     if (isAcknowledged)
         hook.editOriginal(msg).queue()
     else editMessage(msg).queue()
@@ -156,3 +156,6 @@ inline fun <reified E : Enum<E>> SelectMenuInteraction<String, StringSelectMenu>
 
 val Guild.firstPermittedTextChannel
     get() = textChannels.firstOrNull { it.canTalk() }
+
+val Guild.anyVoiceState
+    get() = voiceStates.any { vs -> !vs.member.user.isBot && vs.inAudioChannel() }

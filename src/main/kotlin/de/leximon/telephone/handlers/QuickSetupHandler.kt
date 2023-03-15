@@ -1,18 +1,19 @@
 package de.leximon.telephone.handlers
 
+import de.leximon.telephone.commands.RAN_CALL_COMMAND
 import de.leximon.telephone.commands.SETTINGS_COMMAND
+import de.leximon.telephone.commands.YELLOW_PAGES_URL
 import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.core.data.GuildData
+import de.leximon.telephone.core.data.disableYellowPage
+import de.leximon.telephone.core.data.enableYellowPage
 import de.leximon.telephone.core.data.updateData
 import de.leximon.telephone.util.*
 import dev.minn.jda.ktx.coroutines.await
 import dev.minn.jda.ktx.events.await
 import dev.minn.jda.ktx.events.listener
-import dev.minn.jda.ktx.interactions.components.EntitySelectMenu
-import dev.minn.jda.ktx.interactions.components.danger
-import dev.minn.jda.ktx.interactions.components.row
-import dev.minn.jda.ktx.interactions.components.success
+import dev.minn.jda.ktx.interactions.components.*
 import dev.minn.jda.ktx.messages.MessageCreate
 import dev.minn.jda.ktx.messages.MessageEdit
 import kotlinx.coroutines.coroutineScope
@@ -197,6 +198,24 @@ class QuickSetup(
 
             listener { e ->
                 guild.updateData(GuildData::muteBots setTo (e.componentId == "yes"))
+                e.deferEdit().queue()
+                return@listener true
+            }
+        }
+
+        step {
+            message = guild.tl("quick-setup.yellow-pages", guild.jda.getCommandByName(RAN_CALL_COMMAND).asMention)
+            components += row(
+                success("yes", guild.tl("button.yes")),
+                danger("no", guild.tl("button.no")),
+                link(YELLOW_PAGES_URL, guild.tl("button.open-yellow-pages"))
+            )
+
+            listener { e ->
+                if (e.componentId == "yes")
+                    guild.enableYellowPage()
+                else
+                    guild.disableYellowPage()
                 e.deferEdit().queue()
                 return@listener true
             }

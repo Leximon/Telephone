@@ -12,7 +12,7 @@ import org.litote.kmongo.*
  * Removes a contact from the guild contact list
  * @return null if the contact was not found, otherwise the removed contact
  */
-suspend fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
+suspend fun Guild.removeContact(number: Long) = guildCollection.findOneAndUpdate(
     GuildData::_id eq idLong,
     pullByFilter(GuildData::contacts, Contact::number eq number)
 )?.contacts?.find { c -> c.number == number }.also {
@@ -26,7 +26,7 @@ suspend fun Guild.removeContact(number: Long) = collection.findOneAndUpdate(
  * @throws IllegalArgumentException if a contact with the new name already exists
  */
 suspend fun Guild.editContact(number: Long, newName: String, newNumber: Long): Contact? {
-    val alreadyExists = collection.find(and(
+    val alreadyExists = guildCollection.find(and(
         GuildData::_id eq idLong,
         GuildData::contacts.elemMatch(and(
             Contact::name eq newName,
@@ -36,7 +36,7 @@ suspend fun Guild.editContact(number: Long, newName: String, newNumber: Long): C
     if (alreadyExists)
         throw IllegalArgumentException("A contact with the name $newName already exists")
 
-    return collection.findOneAndUpdate(
+    return guildCollection.findOneAndUpdate(
         and(
             GuildData::_id eq idLong,
             GuildData::contacts / Contact::number eq number
@@ -56,7 +56,7 @@ suspend fun Guild.editContact(number: Long, newName: String, newNumber: Long): C
  */
 suspend fun Guild.addContact(name: String, number: Long): Boolean {
     try {
-        return collection.updateOne(
+        return guildCollection.updateOne(
             and(
                 GuildData::_id eq idLong,
                 GuildData::contacts / Contact::name ne name

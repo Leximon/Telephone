@@ -6,7 +6,7 @@ import com.mongodb.client.model.UpdateOptions
 import net.dv8tion.jda.api.entities.Guild
 import org.litote.kmongo.*
 
-suspend fun Guild.addBlockedNumber(number: Long) = collection.updateOne(
+suspend fun Guild.addBlockedNumber(number: Long) = guildCollection.updateOne(
     GuildData::_id eq idLong,
     addToSet(GuildData::blocked, number),
     options = UpdateOptions().upsert(true)
@@ -15,7 +15,7 @@ suspend fun Guild.addBlockedNumber(number: Long) = collection.updateOne(
     if (it) cachedData()?.blocked?.add(number)
 }
 
-suspend fun Guild.removeBlockedNumber(number: Long) = collection.updateOne(
+suspend fun Guild.removeBlockedNumber(number: Long) = guildCollection.updateOne(
     GuildData::_id eq idLong,
     pull(GuildData::blocked, number)
 ).run { modifiedCount >= 1 }.also {

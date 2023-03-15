@@ -27,9 +27,9 @@ class StateManager(val participant: Participant) {
         val state = state ?: throw IllegalStateException("Cannot send initial message without state")
         if (messageId != null)
             throw IllegalStateException("Message already sent")
-        val message = messageChannel.sendMessage(MessageCreateBuilder(
+        val message = messageChannel.sendMessage(MessageCreate(
             builder = state.buildMessage(this)
-        ).build()).await()
+        )).await()
         messageId = message.idLong
     }
 
@@ -54,10 +54,12 @@ class StateManager(val participant: Participant) {
     private suspend fun updateMessage() {
         val state = state ?: throw IllegalStateException("Cannot update message without state")
         messageChannel.editMessageById(
-            messageId!!, MessageEditBuilder(
-                replace = true,
+            messageId!!,
+            MessageEdit(
+                components = emptyList(),
+                embeds = emptyList(),
                 builder = state.buildMessage(this)
-            ).build()
+            )
         ).queue(null) { LOGGER.debug("Failed to update message by id $messageId", it) }
     }
 
@@ -69,12 +71,12 @@ class StateManager(val participant: Participant) {
      * Creates an embed builder with default formatting
      */
     fun callEmbed(inlineMessage: InlineMessage<*>, adapter: Adapter, builder: InlineEmbed.() -> Unit) {
-        val recipient = participant.recipientInfo
+        val target = participant.targetInfo
         inlineMessage.embeds += EmbedBuilder(description = null)
             .apply(builder).apply {
-                description = "${if (description == null) "" else "$description\n\n"} ${adapter.tl("embed.call.tel", recipient.id.asPhoneNumber())}"
-                recipient.name?.let {
-                    footer(it, recipient.iconUrl)
+                if (target != null) {
+                    description = (description?.let { "$it\n\n" } ?: "") + adapter.tl("embed.call.tel", target.id.asPhoneNumber())
+                    target.name?.let { footer(it, target.iconUrl) }
                 }
             }.build()
     }
@@ -149,7 +151,7 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
             secondary(
                 ADD_CONTACT_BUTTON,
                 emoji = Emojis.ADD_CONTACT
-            ).withDisabled(disableComponents || participant.recipientInfo.isFamiliar)
+            ).withDisabled(disableComponents || participant.targetInfo?.isFamiliar ?: false)
         )
     }
 }
@@ -168,7 +170,7 @@ class IncomingCallState(private val userCount: Int) : State {
         components += row(
             success(PICKUP_BUTTON, tl("button.pickup"), emoji = Emojis.PICKUP),
             danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP),
-            secondary(ADD_CONTACT_BUTTON, emoji = Emojis.ADD_CONTACT).withDisabled(participant.recipientInfo.isFamiliar),
+            secondary(ADD_CONTACT_BUTTON, emoji = Emojis.ADD_CONTACT).withDisabled(participant.targetInfo?.isFamiliar ?: false),
             secondary(BLOCK_BUTTON, emoji = Emojis.BLOCK)
         )
     }
@@ -248,9 +250,23 @@ class CallActiveState(
                 secondary(
                     ADD_CONTACT_BUTTON,
                     emoji = Emojis.ADD_CONTACT
-                ).withDisabled(participant.recipientInfo.isFamiliar)
+                ).withDisabled(participant.targetInfo?.isFamiliar ?: false)
             )
         }
     }
 
+}
+
+class SearchingState(private val failed: Boolean = false) : State {
+    override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
+        callEmbed {
+            if (failed) {
+                title = tl("embed.call.searching.failed")
+                color = 0xff5555
+            } else {
+                title = tl("embed.call.searching")
+                color = 0x8855ff
+            }
+        }
+    }
 }

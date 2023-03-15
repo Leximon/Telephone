@@ -42,7 +42,6 @@ data class GuildData(
      * The sounds used for calls
      */
     var soundPack: SoundPack = SoundPack.CLASSIC,
-    var yellowPages: Boolean = false,
     val contacts: MutableList<Contact> = mutableListOf(),
     val blocked: MutableList<Long> = mutableListOf()
 )
@@ -55,7 +54,7 @@ data class Contact(
     fun asChoice() = Command.Choice(name, number.asPhoneNumber())
 }
 
-val collection = database.getCollection<GuildData>("guilds")
+val guildCollection = database.getCollection<GuildData>("guilds")
 
 val cache = Cache.Builder()
     .expireAfterAccess(24.hours)
@@ -65,14 +64,14 @@ val cache = Cache.Builder()
 /**
  * Gets the guild data (or the cached value)
  */
-suspend fun Guild.data() = cache.get(idLong) { collection.findOne(GuildData::_id eq idLong) ?: GuildData(idLong) }
+suspend fun Guild.data() = cache.get(idLong) { guildCollection.findOne(GuildData::_id eq idLong) ?: GuildData(idLong) }
 
 /**
  * Gets the cached guild data or null if not cached
  */
 fun Guild.cachedData() = cache.get(idLong)
 
-suspend fun Guild.updateData(vararg updates: SetTo<*>) = collection.updateOne(
+suspend fun Guild.updateData(vararg updates: SetTo<*>) = guildCollection.updateOne(
     GuildData::_id eq idLong,
     set(*updates),
     UpdateOptions().upsert(true)
@@ -82,7 +81,7 @@ suspend fun Guild.updateData(vararg updates: SetTo<*>) = collection.updateOne(
  * Gets the guild data and updates it
  * @return the previous guild data
  */
-suspend fun Guild.getAndUpdateData(vararg updates: SetTo<*>) = (collection.findOneAndUpdate(
+suspend fun Guild.getAndUpdateData(vararg updates: SetTo<*>) = (guildCollection.findOneAndUpdate(
     GuildData::_id eq idLong,
     set(*updates),
     FindOneAndUpdateOptions().upsert(true)

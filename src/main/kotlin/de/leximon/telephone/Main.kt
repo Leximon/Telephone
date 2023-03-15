@@ -45,12 +45,7 @@ fun main(args: Array<String>) {
 
     initDatabase(databaseConnectionString)
     initAudio()
-    Localization.init(
-        "commands", "general",
-        DiscordLocale.ENGLISH_US, // default locale
-        DiscordLocale.GERMAN,
-        DiscordLocale.FRENCH
-    )
+    Localization.init("commands", "general")
     runBlocking<Unit> {
         shardManager = DefaultShardManagerBuilder.createLight(token).apply {
             setEventManagerProvider {
@@ -66,9 +61,11 @@ fun main(args: Array<String>) {
                 helpCommand(),
                 phoneNumberCommand(),
                 callCommand(),
+                ranCallCommand(),
                 settingsCommand(),
                 contactListCommand(),
-                blockListCommand()
+                blockListCommand(),
+                yellowPagesCommand()
             )
             callButtonListener()
             quickSetupListener()

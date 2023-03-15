@@ -3,9 +3,7 @@ package de.leximon.telephone.commands
 import de.leximon.telephone.core.SoundPack
 import de.leximon.telephone.core.SupportedLanguage
 import de.leximon.telephone.core.VoiceChannelJoinRule
-import de.leximon.telephone.core.data.GuildData
-import de.leximon.telephone.core.data.getAndUpdateData
-import de.leximon.telephone.core.data.updateData
+import de.leximon.telephone.core.data.*
 import de.leximon.telephone.handlers.isQuickSetupRunning
 import de.leximon.telephone.handlers.startQuickSetup
 import de.leximon.telephone.util.*
@@ -50,6 +48,9 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
     }
     subcommand("sound-pack", "Sets the sounds used for calls (Default: Classic)") {
         enumOption<SoundPack>("pack", "The sound pack", required = true)
+    }
+    subcommand("yellow-pages", "Sets whether this server should be listed on the yellow pages") {
+        option<Boolean>("enabled", "Enable or disable", required = true)
     }
     subcommand("quick-setup", "Starts a quick setup to simplify the configuration of this bot")
 
@@ -200,6 +201,21 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         ).queue()
     }
 
+    onInteract("yellow-pages", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        guild.iconUrl
+        val enabled = e.getOption<Boolean>("enabled")!!
+        e.deferReply().queue()
+        if (enabled)
+            guild.enableYellowPage()
+        else
+            guild.disableYellowPage()
+
+        e.hook.success(
+            "response.command.settings.yellow-pages.${enabled.key()}",
+            emoji = Emojis.SETTINGS
+        ).queue()
+    }
 
     onInteract("quick-setup", timeout = 31.minutes) { e ->
         val channel = e.channel as GuildMessageChannel
