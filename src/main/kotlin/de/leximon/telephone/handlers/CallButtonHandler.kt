@@ -15,7 +15,6 @@ import dev.minn.jda.ktx.messages.into
 import dev.minn.jda.ktx.messages.reply_
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
-import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.sharding.ShardManager
 import kotlin.time.Duration.Companion.seconds
@@ -38,10 +37,7 @@ fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout
 
             // Pickup incoming call
             IncomingCallState.PICKUP_BUTTON -> {
-                val audioChannel = e.runCatching(GenericInteractionCreateEvent::getUsersAudioChannel).getOrElse {
-                    e.reply_(it.message!!, ephemeral = true).queue()
-                    return@listener
-                }
+                val audioChannel = e.getUsersAudioChannel()
                 recipient?.autoHangupJob?.also {
                     if (it.isCompleted)
                         return@run
@@ -49,8 +45,8 @@ fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout
                     e.disableComponents().queue()
                     recipient?.stateManager?.setState(OutgoingCallState(null, disableComponents = true))
                     startVoiceCall(audioChannel)
-                    stateManager.setState(CallActiveState(startTimestamp!!), e.editByState())
-                    recipient?.stateManager?.setState(CallActiveState(startTimestamp!!))
+                    stateManager.setState(CallActiveState(started!!), e.editByState())
+                    recipient?.stateManager?.setState(CallActiveState(started!!))
                 }
             }
 

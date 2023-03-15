@@ -10,7 +10,6 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
-import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 
 val AUTOMATIC_HANGUP_DURATION = 30.seconds
@@ -48,7 +47,8 @@ class Participant(
         }
     var closing = false
     var userCount: Int? = null
-    var startTimestamp: Instant? = null
+    var started: Long? = null
+    var lastMemberLeft: Long? = null
 
     var dialingJob: Job? = null
     var autoHangupJob: Job? = null
@@ -144,11 +144,11 @@ class Participant(
      * Hangs up the call with a sound and sets the state for both sides. The new state will be determined by the current state of the participant.
      * @param updateHandler how and which message should be updated when changing states of this participant. See also [editByState]
      */
-    suspend fun hangUp(updateHandler: (suspend StateManager.(State) -> Unit)? = null) {
+    suspend fun hangUp(updateHandler: (suspend StateManager.(State) -> Unit)? = null, forceClose: Boolean = false) {
         when (state) {
             is CallActiveState -> {
-                stateManager.setState(CallSuccessState(outgoing, startTimestamp), updateHandler)
-                recipient?.stateManager?.setState(CallSuccessState(!outgoing, startTimestamp))
+                stateManager.setState(CallSuccessState(outgoing, started), updateHandler)
+                recipient?.stateManager?.setState(CallSuccessState(!outgoing, started))
             }
 
             is IncomingCallState -> {
@@ -162,7 +162,7 @@ class Participant(
                 recipient?.stateManager?.setState(CallFailedState(CallFailedState.Reason.INCOMING_MISSED))
             }
         }
-        closeSides(sound = true)
+        closeSides(sound = true, force = forceClose)
     }
 
     /**
@@ -200,9 +200,11 @@ class Participant(
         recipient!!.audio?.playSound(Sound.PICKUP)
 
         delay(3.seconds)
-        Instant.now().also {
-            startTimestamp = it
-            recipient!!.startTimestamp = it
+        System.currentTimeMillis().also {
+            started = it
+            recipient!!.started = it
+            lastMemberLeft = it
+            recipient!!.lastMemberLeft = it
         }
         audio?.stopSound()
         recipient!!.audio?.stopSound()
@@ -238,8 +240,8 @@ class Participant(
      * @param sound whether to play the hangup sound
      * @see close
      */
-    suspend fun closeSides(sound: Boolean = false) {
-        if (closing) // to prevent it from playing the sound twice
+    suspend fun closeSides(sound: Boolean = false, force: Boolean = false) {
+        if (closing && !force) // to prevent it from playing the sound twice
             return
         closing = true
         cancelAllJobs()

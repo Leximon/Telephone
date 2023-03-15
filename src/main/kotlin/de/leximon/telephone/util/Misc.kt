@@ -24,7 +24,6 @@ import net.dv8tion.jda.api.requests.FluentRestAction
 import net.dv8tion.jda.api.requests.restaction.interactions.MessageEditCallbackAction
 import java.time.Instant
 import java.util.*
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 const val EMBED_COLOR_NONE = 0x2F3136
@@ -68,8 +67,8 @@ fun getEnv(key: String): String {
     return value
 }
 
-fun Instant.asRelativeTimestamp(): String {
-    return "<t:" + Date.from(this).time / 1000 + ":R>"
+fun Long.asRelativeTimestamp(): String {
+    return "<t:" + this / 1000 + ":R>"
 }
 
 /**
@@ -109,8 +108,8 @@ fun GenericComponentInteractionCreateEvent.disableComponents(): MessageEditCallb
     return editComponents(newComponents)
 }
 
-fun Duration.asTimeString(): String {
-    val seconds = inWholeMilliseconds / 1000
+fun Long.asTimeString(): String {
+    val seconds = this / 1000
     val minutes = seconds / 60
     val hours = minutes / 60
 

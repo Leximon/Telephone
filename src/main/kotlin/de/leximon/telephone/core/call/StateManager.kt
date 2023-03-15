@@ -11,7 +11,6 @@ import dev.minn.jda.ktx.interactions.components.secondary
 import dev.minn.jda.ktx.interactions.components.success
 import dev.minn.jda.ktx.messages.*
 import net.dv8tion.jda.api.interactions.DiscordLocale
-import java.time.Instant
 import kotlin.time.Duration
 
 class StateManager(val participant: Participant) {
@@ -141,7 +140,7 @@ class OutgoingCallState(private val automaticHangup: Duration?, private val disa
             automaticHangup?.let {
                 description = tl(
                     "embed.call.outgoing.description",
-                    Instant.now().plusMillis(it.inWholeMilliseconds).asRelativeTimestamp()
+                    (System.currentTimeMillis() + it.inWholeMilliseconds).asRelativeTimestamp()
                 )
             }
             color = EMBED_COLOR_NONE
@@ -178,15 +177,15 @@ class IncomingCallState(private val userCount: Int) : State {
 
 class CallSuccessState(
     private val outgoing: Boolean,
-    private val startTimestamp: Instant? = null
+    private val started: Long? = null
 ) : State {
     override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl(if (outgoing) "embed.call.success.outgoing" else "embed.call.success.incoming")
-            startTimestamp?.let {
+            started?.let {
                 description = tl(
                     "embed.call.success.description.lasted",
-                    (Instant.now() - it).asTimeString()
+                    (System.currentTimeMillis() - it).asTimeString()
                 )
             }
             thumbnail = if (outgoing) "https://bot-telephone.com/assets/outgoing.png" else "https://bot-telephone.com/assets/incoming.png"
@@ -234,7 +233,7 @@ class CallFailedState(private val reason: Reason) : State {
 }
 
 class CallActiveState(
-    private val startTimestamp: Instant = Instant.now()
+    private val started: Long = System.currentTimeMillis()
 ) : State {
     companion object {
         const val HANGUP_BUTTON = "active-hangup"
@@ -243,7 +242,7 @@ class CallActiveState(
     override fun Adapter.message(): InlineMessage<*>.() -> Unit = {
         callEmbed {
             title = tl("embed.call.active")
-            description = tl("embed.call.active.description", startTimestamp.asRelativeTimestamp())
+            description = tl("embed.call.active.description", started.asRelativeTimestamp())
             color = EMBED_COLOR_NONE
             components += row(
                 danger(HANGUP_BUTTON, tl("button.hangup"), emoji = Emojis.HANGUP),
