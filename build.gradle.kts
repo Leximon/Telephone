@@ -45,7 +45,7 @@ tasks.jar {
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("telephone")
+    archiveBaseName.set("Telephone")
     archiveClassifier.set("")
     archiveVersion.set(project.version.toString())
 }
