@@ -1,14 +1,11 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     id("com.github.johnrengelman.shadow") version "7.1.0"
     kotlin("jvm") version "1.8.0"
     kotlin("plugin.serialization") version "1.8.0"
-    application
 }
 
-group = "de.leximon"
-version = project.version
+group = project.properties["group"] as String
+version = project.properties["version"] as String
 
 repositories {
     mavenCentral()
@@ -21,8 +18,8 @@ dependencies {
     testImplementation(kotlin("test"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation(kotlin("stdlib-jdk8"))
-
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+
     implementation("org.litote.kmongo:kmongo-coroutine:4.8.0")
     implementation("io.github.reactivecircus.cache4k:cache4k:0.9.0")
     implementation("ch.qos.logback:logback-classic:1.4.5")
@@ -35,14 +32,14 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
 
 tasks.jar {
     manifest {
         attributes(
-            "Main-Class" to "de.leximon.telephone.MainKt"
+            "Main-Class" to project.properties["mainClassName"] as String
         )
     }
 }
