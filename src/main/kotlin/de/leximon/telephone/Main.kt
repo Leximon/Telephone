@@ -18,6 +18,8 @@ import dev.minn.jda.ktx.messages.into
 import dev.minn.jda.ktx.messages.send
 import kotlinx.coroutines.runBlocking
 import net.dv8tion.jda.api.JDA
+import net.dv8tion.jda.api.OnlineStatus
+import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent
@@ -89,6 +91,8 @@ fun main(args: Array<String>) {
                 guild.disableYellowPage()
                 guild.deleteData()
             }
+
+            setPresence(OnlineStatus.ONLINE, Activity.listening("/$CALL_COMMAND"))
         }
     }
 
@@ -111,7 +115,9 @@ fun createSummaryEmbed(locale: DiscordLocale, jda: JDA, byCommand: Boolean = fal
     val summary = tl(
         locale, "summary.description",
         jda.getCommandByName(CALL_COMMAND).asMention,
-        "/call", "/phone-number", "/contact-list", "/block-list", "/settings"
+        jda.getCommandByName(RAN_CALL_COMMAND).asMention,
+        "/call", "/ran-call", "/phone-number", "/contact-list", "/block-list", "/settings",
+        YELLOW_PAGES_URL
     )
     val desc = StringBuilder("$summary\n\n").apply {
         if (!byCommand)
