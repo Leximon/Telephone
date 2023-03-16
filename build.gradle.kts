@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
+    id("com.github.johnrengelman.shadow") version "7.1.0"
     kotlin("jvm") version "1.8.0"
     kotlin("plugin.serialization") version "1.8.0"
     application
@@ -38,6 +39,16 @@ tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
 
-application {
-    mainClass.set("MainKt")
+tasks.jar {
+    manifest {
+        attributes(
+            "Main-Class" to "de.leximon.telephone.MainKt"
+        )
+    }
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("telephone")
+    archiveClassifier.set("")
+    archiveVersion.set(project.version.toString())
 }
