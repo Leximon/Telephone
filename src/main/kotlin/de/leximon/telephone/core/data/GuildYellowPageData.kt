@@ -20,8 +20,8 @@ import org.litote.kmongo.setTo
 data class GuildYellowPageData(
     val _id: Long,
     val name: String,
-    val icon: String,
-    val locale: DiscordLocale,
+    val icon: String? = null,
+    val locale: DiscordLocale = DiscordLocale.ENGLISH_US,
     val usersInTalk: Boolean = false
 ) {
     val guild get() = shardManager.getGuildById(_id)
