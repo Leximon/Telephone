@@ -1,0 +1,6 @@
+targets:
+  - name: general
+    sources:
+      - /src/main/resources/*.properties
+    file: /src/main/resources/%original_file_name%_%two_letters_code%.properties
+    format: crowdin-properties
