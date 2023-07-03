@@ -24,7 +24,7 @@ dependencies {
     implementation("io.github.reactivecircus.cache4k:cache4k:0.9.0")
     implementation("ch.qos.logback:logback-classic:1.4.5")
     implementation("net.dv8tion:Telephone-JDA:5.0.0-beta.5_DEV") // use a slightly modified version of the JDA
-    implementation("com.github.minndevelopment:jda-ktx:9fc90f616b7c9b68b8680c7bf37d6af361bb0fbb")
+    implementation("com.github.minndevelopment:jda-ktx:9370cb13cc")
     implementation("com.sedmelluq:lavaplayer:1.3.77")
 }
 
