@@ -10,4 +10,4 @@ ENV DB_CONN_STRING=$DB_CONN_STRING
 
 COPY --from=build /home/gradle/src/build/libs/*.jar /bot.jar
 
-ENTRYPOINT ["java","-jar","bot.jar"]
+ENTRYPOINT ["java","-XX:ErrorFile=logs/hs_err_pid%p.log","-jar","bot.jar"]
