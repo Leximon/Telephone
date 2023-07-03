@@ -10,7 +10,7 @@ version = project.properties["version"] as String
 repositories {
     mavenCentral()
     maven("https://jitpack.io/")
-    maven("https://repo.tts-craft.de/releases")
+    maven("https://repo.bot-telephone.com/releases")
     maven("https://m2.dv8tion.net/releases")
 }
 
