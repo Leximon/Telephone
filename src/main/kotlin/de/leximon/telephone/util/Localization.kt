@@ -38,7 +38,9 @@ object Localization : LocalizationFunction {
         val fallback = fallbackLocale ?: throw IllegalStateException("Localization not initialized")
         val bundle = generalBundles[locale] ?: generalBundles[fallback]!!
         try {
-            val msg = MessageFormat(bundle.getString(key), Locale.forLanguageTag(locale.locale))
+            val template = bundle.getString(key)
+            val escapedTemplate = template.replace("'", "''")
+            val msg = MessageFormat(escapedTemplate, Locale.forLanguageTag(locale.locale))
             return msg.format(args)
         } catch (e: MissingResourceException) {
             if (locale == fallback)
