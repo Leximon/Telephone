@@ -3,6 +3,7 @@ package de.leximon.telephone.core.call
 import de.leximon.telephone.core.Sound
 import de.leximon.telephone.core.VoiceChannelJoinRule
 import de.leximon.telephone.core.data.*
+import de.leximon.telephone.shardManager
 import de.leximon.telephone.util.editByState
 import dev.minn.jda.ktx.events.await
 import kotlinx.coroutines.*
@@ -81,7 +82,7 @@ class Participant(
             audio?.playSound(Sound.DIALING)
             delay(4.75.seconds)
 
-            val targetGuild = jda.getGuildById(targetInfo.id)
+            val targetGuild = shardManager.getGuildById(targetInfo.id)
             if (targetGuild == null) {
                 stateManager.setState(DialingFailedState(DialingFailedState.Reason.RECIPIENT_NOT_FOUND))
                 close()
