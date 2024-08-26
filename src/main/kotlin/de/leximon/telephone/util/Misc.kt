@@ -156,5 +156,5 @@ inline fun <reified E : Enum<E>> SelectMenuInteraction<String, StringSelectMenu>
 val Guild.firstPermittedTextChannel
     get() = textChannels.firstOrNull { it.canTalk() }
 
-val Guild.anyVoiceState
+val Guild.anyoneInVoiceChannelExceptBot
     get() = voiceStates.any { vs -> !vs.member.user.isBot && vs.inAudioChannel() }

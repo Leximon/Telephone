@@ -4,7 +4,7 @@ package de.leximon.telephone.core.data
 
 import com.mongodb.client.model.UpdateOptions
 import de.leximon.telephone.shardManager
-import de.leximon.telephone.util.anyVoiceState
+import de.leximon.telephone.util.anyoneInVoiceChannelExceptBot
 import de.leximon.telephone.util.database
 import de.leximon.telephone.util.preferredLocale
 import kotlinx.serialization.Serializable
@@ -49,6 +49,6 @@ suspend fun Guild.findRandomGuildOnYellowPage(): GuildYellowPageData? {
         sample(20)
     ).consumeEach { candidates.add(it) }
 
-    return candidates.filter { it.guild?.anyVoiceState == true && it._id != idLong }.randomOrNull()
+    return candidates.filter { it.guild?.anyoneInVoiceChannelExceptBot == true && it._id != idLong }.randomOrNull()
         ?: candidates.filter { it._id != idLong }.randomOrNull()
 }
