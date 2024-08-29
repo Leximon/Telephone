@@ -202,10 +202,7 @@ class Participant(
             connectToAudioChannel(channel)
             delay(1.seconds) // wait for the audio connection to be established
         }
-        audio?.playSound(Sound.PICKUP)
-        recipient!!.audio?.playSound(Sound.PICKUP)
 
-        delay(3.seconds)
         System.currentTimeMillis().also {
             started = it
             recipient!!.started = it

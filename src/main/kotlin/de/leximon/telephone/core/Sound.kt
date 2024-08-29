@@ -11,14 +11,12 @@ object Sound {
     lateinit var DIALING: SoundType
     lateinit var CALLING: SoundType
     lateinit var RINGING: SoundType
-    lateinit var PICKUP: SoundType
     lateinit var HANGUP: SoundType
 
     fun init() {
         DIALING = SoundType("dialing.mp3")
         CALLING = SoundType("calling.mp3")
         RINGING = SoundType("ringing.mp3")
-        PICKUP = SoundType("pickup.mp3")
         HANGUP = SoundType("hangup.mp3")
         LOGGER.info("Sounds loaded")
     }
