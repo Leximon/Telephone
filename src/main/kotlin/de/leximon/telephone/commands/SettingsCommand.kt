@@ -49,6 +49,9 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
     subcommand("sound-pack", "Sets the sounds used for calls (Default: Classic)") {
         enumOption<SoundPack>("pack", "The sound pack", required = true)
     }
+    subcommand("disable-call-sound", "Disables the call and dialing sound effect when calling someone") {
+        option<Boolean>("disabled", "Enable or disable", required = true)
+    }
     subcommand("yellow-pages", "Sets whether this server should be listed on the yellow pages") {
         option<Boolean>("enabled", "Enable or disable", required = true)
     }
@@ -198,6 +201,18 @@ fun settingsCommand() = slashCommand(SETTINGS_COMMAND, "Configurations for the t
         guild.updateData(GuildData::soundPack setTo pack)
         e.hook.success(
             "response.command.settings.sound-pack", pack.tl(guild),
+            emoji = Emojis.SETTINGS
+        ).queue()
+    }
+
+    onInteract("disable-call-sound", timeout = 1.minutes) { e ->
+        val guild = e.guild!!
+        val disabled = e.getOption<Boolean>("disabled")!!
+        e.deferReply().queue()
+
+        guild.updateData(GuildData::disableCallSound setTo disabled)
+        e.hook.success(
+            "response.command.settings.disable-call-sound.${disabled.key()}",
             emoji = Emojis.SETTINGS
         ).queue()
     }

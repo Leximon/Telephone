@@ -14,7 +14,9 @@ import io.github.reactivecircus.cache4k.Cache
 import kotlinx.serialization.Serializable
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.interactions.commands.Command
-import org.litote.kmongo.*
+import org.litote.kmongo.SetTo
+import org.litote.kmongo.eq
+import org.litote.kmongo.set
 import kotlin.reflect.KMutableProperty1
 import kotlin.time.Duration.Companion.hours
 
@@ -42,6 +44,7 @@ data class GuildData(
      * The sounds used for calls
      */
     var soundPack: SoundPack = SoundPack.CLASSIC,
+    var disableCallSound: Boolean = false,
     val contacts: MutableList<Contact> = mutableListOf(),
     val blocked: MutableList<Long> = mutableListOf()
 )

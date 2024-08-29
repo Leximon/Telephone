@@ -79,7 +79,9 @@ class Participant(
             connectToAudioChannel(audioChannel)
             userCount = audioChannel.members.size
             delay(1.seconds) // wait for the audio connection to be established
-            audio?.playSound(Sound.DIALING)
+
+            if (guild.cachedData()?.disableCallSound == false)
+                audio?.playSound(Sound.DIALING)
             delay(4.75.seconds)
 
             val targetGuild = shardManager.getGuildById(targetInfo.id)
@@ -128,11 +130,14 @@ class Participant(
             }
 
             autoHangupJob = launch {
-                audio?.playSound(Sound.CALLING, true)
+                if (guild.cachedData()?.disableCallSound == false)
+                    audio?.playSound(Sound.CALLING, true)
+
                 stateManager.setState(OutgoingCallState(AUTOMATIC_HANGUP_DURATION))
                 delay(AUTOMATIC_HANGUP_DURATION)
                 withContext(NonCancellable) { hangUp() }
             }
+
             withTimeoutOrNull(AUTOMATIC_HANGUP_DURATION) {
                 val pressed = jda.await<ButtonInteractionEvent> { it.componentId == OutgoingCallState.HANGUP_BUTTON && guild.idLong == it.guild?.idLong }
                 pressed.deferEdit().queue()

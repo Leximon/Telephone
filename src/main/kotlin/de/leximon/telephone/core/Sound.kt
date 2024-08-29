@@ -29,7 +29,8 @@ class SoundType(file: String) {
 
     init {
         for (pack in SoundPack.values()) {
-            val path = "/audio/${pack.directory}/$file";
+            val path = "/audio/${pack.directory}/$file"
+
             audioPlayerManager.loadItem(
                 path, LoadHandler(path) { audioTracks[pack] = it }
             ).get() // .get for blocking
