@@ -51,7 +51,7 @@ fun main(args: Array<String>) {
     }
 
     LOGGER.info("Starting Telephone...")
-    val token = getEnv("TOKEN");
+    val token = getEnv("TOKEN")
     val databaseConnectionString = getEnv("DB_CONN_STRING")
 
     initDatabase(databaseConnectionString)
