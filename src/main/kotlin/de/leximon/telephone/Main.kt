@@ -36,12 +36,18 @@ import kotlin.time.Duration.Companion.minutes
 val LOGGER = LoggerFactory.getLogger("Telephone") as Logger
 
 lateinit var shardManager: ShardManager
+var isDev = false
 
 fun main(args: Array<String>) {
     when {
         args.contains("-debug-root") -> (LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME) as ch.qos.logback.classic.Logger).level =
             Level.DEBUG
         args.contains("-debug") -> (LOGGER as ch.qos.logback.classic.Logger).level = Level.DEBUG
+    }
+
+    if (args.contains("-dev")) {
+        LOGGER.warn("Running in development mode")
+        isDev = true
     }
 
     LOGGER.info("Starting Telephone...")

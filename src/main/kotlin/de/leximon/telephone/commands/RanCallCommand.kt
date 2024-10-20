@@ -17,7 +17,9 @@ import dev.minn.jda.ktx.messages.MessageEdit
 import dev.minn.jda.ktx.messages.into
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
+import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -45,29 +47,15 @@ fun ranCallCommand() = slashCommand("ran-call", "Starts a call to a random disco
         e.deferReply(true).queue()
 
         if (!guild.isYellowPageEnabled()) {
-            val command = e.jda.getCommandByName(SETTINGS_COMMAND)
-            val privileges = guild.retrieveCommandPrivileges().await()
-            val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
-            val enableButton = primary("enable-yellow-pages", e.tl("button.enable-yellow-pages")).takeIf { permitted }
-            e.hook.editOriginal(MessageEdit {
-                content = e.tl("response.command.ran-call.not-on-yellow-pages").withEmoji(Emojis.ERROR)
-                enableButton?.let { components += it.into() }
-            }).queue()
-
-            if (enableButton == null)
-                return@onInteract
-            withTimeoutOrNull(30.seconds) {
-                val pressed = e.user.awaitButton(enableButton)
-                guild.enableYellowPage()
-                pressed.success("response.command.settings.yellow-pages.on", emoji = Emojis.SETTINGS).queue()
-            }
-            e.hook.deleteOriginal().queue()
+            sendNotOnYellowPagesError(e, guild)
             return@onInteract
         }
+
         e.hook.deleteOriginal().await()
 
         if (guild.asParticipant() != null) // check again, because another user could have started a call in the meantime
             return@onInteract
+
         val participant = guild.initializeCall(messageChannel, outgoing = true)
         participant.sendInitialState(SearchingState())
         val target = guild.findRandomGuildOnYellowPage()
@@ -77,7 +65,34 @@ fun ranCallCommand() = slashCommand("ran-call", "Starts a call to a random disco
             return@onInteract
         }
         delay(3.seconds)
-        participant.preInitTarget(target._id)
+        participant.preInitTarget(target.idLong)
         participant.startDialing(audioChannel, setState = true)
     }
 }
+
+private suspend fun sendNotOnYellowPagesError(
+    e: SlashCommandInteractionEvent,
+    guild: Guild
+) {
+    val command = e.jda.getCommandByName(SETTINGS_COMMAND)
+    val privileges = guild.retrieveCommandPrivileges().await()
+    val permitted = privileges.hasCommandPermission(e.channel as GuildMessageChannel, command, e.member!!)
+    val enableButton = primary("enable-yellow-pages", e.tl("button.enable-yellow-pages"))
+
+    e.hook.editOriginal(MessageEdit {
+        content = e.tl("response.command.ran-call.not-on-yellow-pages").withEmoji(Emojis.ERROR)
+        if (permitted) {
+            components += enableButton.into()
+        }
+    }).queue()
+
+    if (permitted) {
+        withTimeoutOrNull(30.seconds) {
+            val event = e.user.awaitButton(enableButton)
+            guild.enableYellowPage()
+            event.success("response.command.settings.yellow-pages.on", emoji = Emojis.SETTINGS).queue()
+        }
+        e.hook.deleteOriginal().queue()
+    }
+}
+

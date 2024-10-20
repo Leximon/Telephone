@@ -43,12 +43,23 @@ suspend fun Guild.disableYellowPage() = yellowPageCollection.deleteOne(GuildYell
 
 suspend fun Guild.isYellowPageEnabled() = yellowPageCollection.countDocuments(GuildYellowPageData::_id eq idLong) >= 1
 
-suspend fun Guild.findRandomGuildOnYellowPage(): GuildYellowPageData? {
-    val candidates = mutableListOf<GuildYellowPageData>()
+suspend fun Guild.findRandomGuildOnYellowPage(): Guild? {
+    val aggregatedYellowPageData = mutableListOf<GuildYellowPageData>()
     yellowPageCollection.aggregate<GuildYellowPageData>(
         sample(20)
-    ).consumeEach { candidates.add(it) }
+    ).consumeEach {
+        if (it._id == this.idLong)
+            return@consumeEach
 
-    return candidates.filter { it.guild?.anyoneInVoiceChannelExceptBot == true && it._id != idLong }.randomOrNull()
-        ?: candidates.filter { it._id != idLong }.randomOrNull()
+        aggregatedYellowPageData.add(it)
+    }
+
+    val candidates = aggregatedYellowPageData
+        .mapNotNull { it.guild }
+        .filter { guild ->
+            val guildData = guild.data()
+            return@filter !guildData.blocked.contains(this.idLong) && !this.data().blocked.contains(guildData._id)
+        }
+
+    return candidates.filter { it.anyoneInVoiceChannelExceptBot }.randomOrNull() ?: candidates.randomOrNull()
 }
