@@ -30,8 +30,15 @@ fun ranCallCommand() = slashCommand("ran-call", "Starts a call to a random disco
         val guild = e.guild!!
         if (!e.channel.canTalk())
             throw CommandException("response.error.no-access.text-channel", e.channel.asMention)
-        if (guild.asParticipant() != null)
-            throw CommandException("response.command.call.already-in-use")
+
+        val currentParticipation = guild.asParticipant()
+        if (currentParticipation != null) {
+            if (guild.audioManager.isConnected) {
+                throw CommandException("response.command.call.already-in-use")
+            }
+
+            currentParticipation.closeSides(sound = false, force = true) // workaround in case the guild is still participating in a call but the bot isn't in a voice channel
+        }
 
         val messageChannel = e.channel as GuildMessageChannel
         val audioChannel = e.getUsersAudioChannel()
