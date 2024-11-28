@@ -16,6 +16,7 @@ import dev.minn.jda.ktx.messages.reply_
 import kotlinx.coroutines.withTimeoutOrNull
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException
 import net.dv8tion.jda.api.sharding.ShardManager
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,10 +39,19 @@ fun ShardManager.callButtonListener() = listener<ButtonInteractionEvent>(timeout
             // Pickup incoming call
             IncomingCallState.PICKUP_BUTTON -> {
                 val audioChannel = e.getUsersAudioChannel()
+
+                try {
+                    if (guild.audioManager.connectedChannel != audioChannel)
+                        connectToAudioChannel(audioChannel)
+                } catch (e: InsufficientPermissionException) {
+                    throw CommandException("response.error.no-access.voice-channel", audioChannel.asMention)
+                }
+
                 recipient?.autoHangupJob?.also {
                     if (it.isCompleted)
                         return@run
                     it.cancel()
+
                     e.disableComponents().queue()
                     recipient?.stateManager?.setState(OutgoingCallState(null, disableComponents = true))
                     startVoiceCall(audioChannel)

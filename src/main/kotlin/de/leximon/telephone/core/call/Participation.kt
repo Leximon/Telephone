@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException
 import kotlin.time.Duration.Companion.seconds
 
 val AUTOMATIC_HANGUP_DURATION = 30.seconds
@@ -74,9 +75,17 @@ class Participant(
     ) {
         val targetInfo = checkNotNull(targetInfo) { "targetInfo must be initialized before starting the dialing" }
         coroutineScope { dialingJob = launch {
+
+            try {
+                connectToAudioChannel(audioChannel)
+            } catch (e: InsufficientPermissionException) {
+                stateManager.setState(DialingFailedState(DialingFailedState.Reason.COULD_NOT_JOIN_VOICE))
+                close()
+                return@launch
+            }
+
             if (setState)
                 stateManager.setState(DialingState())
-            connectToAudioChannel(audioChannel)
             userCount = audioChannel.members.size
             delay(1.seconds) // wait for the audio connection to be established
 
@@ -186,8 +195,12 @@ class Participant(
                     .takeIf { it != null && guild.selfMember.hasAccess(it) }
             else -> null
         }?.also {
-            connectToAudioChannel(it)
-            audio?.playSound(Sound.RINGING, true)
+            try {
+                connectToAudioChannel(it)
+                audio?.playSound(Sound.RINGING, true)
+            } catch (e: InsufficientPermissionException) {
+                // ignore
+            }
         }
     }
 
@@ -213,7 +226,7 @@ class Participant(
         recipient!!.audio?.stopSound()
     }
 
-    private fun connectToAudioChannel(channel: AudioChannel) {
+    fun connectToAudioChannel(channel: AudioChannel) {
         val audioManager = guild.audioManager
         audioManager.openAudioConnection(channel)
         if (audio == null)

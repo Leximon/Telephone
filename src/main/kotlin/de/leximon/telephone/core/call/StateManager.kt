@@ -123,7 +123,8 @@ class DialingFailedState(private val reason: Reason) : State {
         BLOCKED_BY_CALLER("embed.call.blocked-by-caller", "embed.call.blocked-by-caller.description"),
         RECIPIENT_NOT_FOUND("embed.call.recipient-not-found", "embed.call.recipient-not-found.description"),
         RECIPIENT_ALREADY_IN_CALL("embed.call.recipient-already-in-call"),
-        RECIPIENT_NO_TEXT_CHANNEL("embed.call.recipient-no-text-channel", "embed.call.recipient-no-text-channel.description")
+        RECIPIENT_NO_TEXT_CHANNEL("embed.call.recipient-no-text-channel", "embed.call.recipient-no-text-channel.description"),
+        COULD_NOT_JOIN_VOICE("embed.call.could-not-join-voice", "embed.call.could-not-join-voice.description")
     }
 }
 
